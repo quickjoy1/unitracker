@@ -260,12 +260,34 @@ export function useDataExportImport(): UseDataExportImportReturn {
         return result;
       }
 
-      // Restore workspaces to store
+      if (!user?.id) {
+        toast.error('Please log in to restore a backup');
+        setLastRestoreResult(result);
+        return { ...result, success: false, error: 'Not logged in' };
+      }
+
+      // Actually save the backup (before, only workspaces were put in memory, so nothing persisted).
+      // Workspaces first: tasks and sessions point at them. Ids are kept so links stay intact.
+      const withUser = (rows: any[]) => rows.map((r) => ({ ...r, user_id: user.id }));
+      const steps: [string, any[]][] = [
+        ['workspaces', withUser(result.workspaces as any[])],
+        ['tasks', withUser(result.tasks as any[])],
+        ['study_laps', withUser(result.laps as any[])],
+      ];
+      for (const [tableName, rows] of steps) {
+        if (rows.length === 0) continue;
+        const { error: saveError } = await supabase.from(tableName).upsert(rows, { onConflict: 'id' });
+        if (saveError) {
+          toast.error(`Restore failed while saving ${tableName}: ${saveError.message}`);
+          const failed: RestoreResult = { ...result, success: false, error: saveError.message };
+          setLastRestoreResult(failed);
+          return failed;
+        }
+      }
+
       if (result.workspaces.length > 0) {
         setWorkspaces(result.workspaces);
-        if (result.workspaces.length > 0 && !currentWorkspace) {
-          setCurrentWorkspace(result.workspaces[0] ?? null);
-        }
+        if (!currentWorkspace) setCurrentWorkspace(result.workspaces[0] ?? null);
       }
 
       toast.success(
@@ -273,6 +295,8 @@ export function useDataExportImport(): UseDataExportImportReturn {
       );
 
       setLastRestoreResult(result);
+      // Reload so every page picks up the restored data from storage
+      window.setTimeout(() => window.location.reload(), 1200);
       return result;
     } catch (err) {
       toast.error(`Restore failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -289,7 +313,7 @@ export function useDataExportImport(): UseDataExportImportReturn {
     } finally {
       setImporting(false);
     }
-  }, [setWorkspaces, setCurrentWorkspace, currentWorkspace]);
+  }, [user, setWorkspaces, setCurrentWorkspace, currentWorkspace]);
 
   const clearResults = useCallback(() => {
     setLastImportResult(null);
