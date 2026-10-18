@@ -1,206 +1,89 @@
-# UniTracker
+# UniTracker (quickjoy1 fork)
 
-**6 apps in 1 — replace your entire productivity stack.**
+A fork of [rickypcyt/unitracker](https://github.com/rickypcyt/unitracker), an all-in-one productivity app: Pomodoro and study timers, Kanban tasks, calendar, stats, notes and habits.
 
-UniTracker is a free, open-source, all-in-one app that combines a Pomodoro timer, task manager, calendar, analytics, notes, and habit tracker into a single, cohesive experience. Track your time across every area — work, study, personal projects — all in one place, accessible from any device. No more jumping between tabs or paying for multiple subscriptions.
+This fork is made to **run locally with no account, no keys and no hosting**.
 
-> In active development since **December 2024**.
+## What is different in this fork
 
----
+- **Works offline with no login.** Without Supabase keys the app uses a small built-in database stored in your browser and signs you in automatically as a local user (`src/utils/localSupabase.ts`). Tasks, workspaces and sessions all work.
+- **Task status is saved.** In Progress and On Hold no longer jump back to To Do after a reload.
+- **Due-task reminders.** A toast plus a browser notification at 24 hours before, 1 hour before, when due, and once a day while overdue. Done tasks never remind. Deadlines without a time count as due at the end of that day.
+- **Backup restore works.** Restore now saves workspaces, tasks and sessions, then reloads the page. Before, it only showed a success message.
 
-## Features
+## Run it locally
 
-### Timers
-- **Pomodoro Timer** — Customizable work/break intervals with sound alerts and notifications.
-- **Study Timer** — Track total focus time across sessions in any area.
-- **Countdown Timer** — Set a target time and count down with alarm support.
-- **Timer Sync** — Link timers together so starting one starts the others.
-
-### Task Management
-- **Kanban Board** — Drag-and-drop tasks organized by assignment with pinning, sorting, and difficulty levels.
-- **AI Task Creation** — Generate tasks automatically using AI.
-- **Assignments** — Group tasks by project or category with progress tracking.
-- **Tags & Deadlines** — Flexible labeling and due date support.
-
-### Calendar
-- **Unified View** — Tasks and focus sessions displayed together in a monthly, weekly, or daily calendar.
-- **Google Calendar Export** — Export your schedule in one click.
-
-### Analytics
-- **Time Stats** — Visualize tracked hours, pomodoros completed, and session frequency.
-- **Streaks** — Track daily consistency and build momentum.
-- **Productivity Trends** — Charts powered by Recharts and Chart.js.
-
-### Notes & Habits
-- **Markdown Notes** — Rich text editor with live preview (powered by TipTap).
-- **Habit Tracker** — Build habits with daily tracking and streak visualization.
-
-### Noise Generator
-- **Ambient Sounds** — Brown noise, rain, ocean waves, and more with individual volume control.
-- **Sound Presets** — Save and load your favorite sound combinations.
-- **Audio Synthesis** — All sounds generated in-browser using Tone.js — no audio files needed.
-
-### Other
-- **Dark Mode** — Full theme support with CSS custom properties.
-- **Offline Support** — Install as a PWA and use without a connection. Data syncs when you're back online.
-- **Data Export** — Export your data as CSV, PDF, or JSON.
-- **Cross-Platform** — Web, Android (via Capacitor), and installable PWA.
-
----
-
-## Tech Stack
-
-| Category | Technology |
-| --- | --- |
-| **Framework** | React 18 with TypeScript |
-| **Build Tool** | Vite (with SWC for fast compilation) |
-| **Styling** | Tailwind CSS 3.4 with CSS custom properties for theming |
-| **State Management** | Zustand |
-| **Routing** | React Router DOM v7 |
-| **Backend & Auth** | Supabase (PostgreSQL, Auth, Realtime) |
-| **Animations** | Framer Motion |
-| **Charts** | Recharts & Chart.js |
-| **Rich Text** | TipTap |
-| **Audio** | Tone.js (Web Audio API) |
-| **Drag & Drop** | dnd-kit |
-| **Email** | Resend + React Email |
-| **PWA** | vite-plugin-pwa |
-| **Mobile** | Capacitor (Android) |
-| **Testing** | Vitest (unit) + Playwright (E2E) |
-| **Linting** | ESLint 9 + Husky + lint-staged |
-| **Icons** | Lucide React |
-| **Deployment** | Vercel |
-
----
-
-## Architecture
-
-UniTracker is built as a single-page application with lazy-loaded routes for optimal performance:
-
-- **`src/pages/`** — Page-level components (Session, Tasks, Calendar, Stats, Habits, Notes, Landing).
-- **`src/components/`** — Shared UI components (TimerSettings, OnboardingGuide, tooltips, etc.).
-- **`src/store/`** — Zustand store managing global state (tasks, workspaces, UI state, sync settings).
-- **`src/hooks/`** — Custom hooks for auth, task board logic, and friend management.
-- **`src/modals/`** — Reusable modal components built on a shared `BaseModal` pattern.
-- **`src/utils/`** — Supabase client, noise context, and utility functions.
-- **`src/navbar/`** — Navigation system with context-based routing.
-- **`api/`** — Serverless API routes (OpenRouter for AI, email sending via Resend).
-
-The app uses a **CSS custom property theming system** defined in `src/index.css` that supports light/dark modes through `--bg-primary`, `--bg-secondary`, `--text-primary`, `--accent-primary`, and more — ensuring consistent styling across all components.
-
-State is managed globally through **Zustand** with selective subscription hooks (e.g., `useTasks`, `useWorkspace`, `useUi`) to minimize re-renders. Data persistence is handled through **Supabase** for authenticated users, with localStorage fallback for offline/demo mode.
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** 18+ (or [Bun](https://bun.sh))
-- A Supabase project for auth and data (or run in demo mode without one)
-
-### Installation
+You need Node.js 20 or newer.
 
 ```bash
-# Clone the repository
-git clone https://github.com/rickypcyt/unitracker.git
+git clone https://github.com/quickjoy1/unitracker.git
 cd unitracker
-
-# Install dependencies
-bun install
-# or: npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your Supabase URL and anon key
-
-# Start the dev server
-bun run dev
-# or: npm run dev
+npm install --legacy-peer-deps
+npm run dev
 ```
 
-### Available Scripts
+Open http://localhost:5173/app. Click anywhere once and allow notifications so reminders can pop up.
 
-| Script | Description |
+Notes for local mode:
+- Reminders only fire while the app is open in a browser tab.
+- Data lives in this browser only. Clearing site data deletes it, so use Settings to export a backup now and then.
+- Google login, friends and sharing, and avatar upload need a real Supabase project and do not work in local mode.
+- Optional: to use your own Supabase project, create a `.env` file with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` and restart.
+
+## Keep your local folder in sync with this repo
+
+**Easiest: start from a clone.** If your folder was not created with `git clone` (for example you unzipped a download), connect it to the repo once. This replaces tracked files with the repo version, but leaves `node_modules` and your `.env` alone:
+
+```bash
+cd path/to/your/unitracker-folder
+git init
+git remote add origin https://github.com/quickjoy1/unitracker.git
+git fetch origin
+git reset --hard origin/main
+git branch --set-upstream-to=origin/main main
+npm install --legacy-peer-deps
+```
+
+Back up anything you changed by hand before running `git reset --hard`.
+
+**After that, to get new changes from GitHub into your folder:**
+
+```bash
+git pull
+npm install --legacy-peer-deps   # only needed if package.json changed
+```
+
+If you want this to happen without typing, set up a scheduled task (Windows Task Scheduler, or cron on Mac/Linux) that runs `git -C path/to/folder pull` every so often. Git cannot pull on its own without something running it.
+
+**To send your own local changes back to GitHub:**
+
+```bash
+git add -A
+git commit -m "describe your change"
+git push
+```
+
+You will be asked to sign in to GitHub the first time (use a personal access token as the password, or run `gh auth login` if you have the GitHub CLI).
+
+**To also receive updates from the original project** (rickypcyt/unitracker):
+
+```bash
+git remote add upstream https://github.com/rickypcyt/unitracker.git
+git fetch upstream
+git merge upstream/main
+```
+
+If Git reports conflicts, they will be in files both sides changed (most likely `src/utils/supabaseClient.ts` or `src/hooks/useTaskStorage.ts`). Fix them, then `git add` and `git commit`.
+
+## Scripts
+
+| Command | What it does |
 | --- | --- |
-| `dev` | Start Vite dev server |
-| `dev:fast` | Fast dev mode (skips type checking) |
-| `build` | Production build |
-| `build:analyze` | Build with bundle visualizer |
-| `type-check` | Run TypeScript compiler in check mode |
-| `lint` | Run ESLint |
-| `lint:fix` | Run ESLint with auto-fix |
-| `test` | Run unit tests (Vitest) |
-| `test:watch` | Run tests in watch mode |
-| `test:e2e` | Run Playwright E2E tests |
-| `android:build` | Build Android APK via Capacitor |
+| `npm run dev` | Start the app at http://localhost:5173 |
+| `npm test` | Run unit tests |
+| `npm run type-check` | Check TypeScript types |
+| `npm run build` | Production build |
 
----
+## Credits
 
-## Project Structure
-
-```
-unitracker/
-├── src/
-│   ├── pages/           # Page components
-│   │   ├── session/     # Timer dashboard (Pomodoro, Study, Countdown, Noise)
-│   │   ├── tasks/       # Kanban board & task management
-│   │   ├── calendar/    # Calendar views (month, week, day)
-│   │   ├── stats/       # Analytics & charts
-│   │   ├── habits/      # Habit tracker
-│   │   ├── notes/       # Markdown notes
-│   │   └── landing/     # Marketing pages (home, pricing, compare, blog)
-│   ├── components/      # Shared components
-│   ├── store/           # Zustand global store
-│   ├── hooks/           # Custom React hooks
-│   ├── modals/          # Modal components
-│   ├── utils/           # Utilities (Supabase, noise, etc.)
-│   ├── navbar/          # Navigation system
-│   └── constants/       # App constants & config
-├── api/                 # Serverless functions (AI, email)
-├── e2e/                 # Playwright E2E tests
-├── public/              # Static assets (icons, sounds, robots.txt)
-└── ...config files
-```
-
----
-
-## Roadmap
-
-UniTracker has been in continuous development since December 2024. Upcoming priorities include:
-
-- iOS support via Capacitor
-- Collaborative focus sessions with friends
-- Advanced analytics with custom date ranges
-- Note templates and linking
-- Calendar integrations beyond Google
-
----
-
-## Contributing
-
-Contributions are welcome! This is an open-source project — feel free to open issues, submit PRs, or suggest features.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (Husky will run lint-staged on commit)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-
-## Support & Feedback
-
-- **Discord community:** [https://discord.gg/8sRswbPQQm](https://discord.gg/8sRswbPQQm)
-- **GitHub Issues:** [https://github.com/rickypcyt/unitracker/issues](https://github.com/rickypcyt/unitracker/issues)
-
----
-
-## License
-
-This project is open source. See the repository for details.
-
----
-
-Made with ❤️ for anyone who wants to track their time. Free, open source, and always will be.
+Original project by [rickypcyt](https://github.com/rickypcyt/unitracker). This fork keeps the original code and adds the changes listed above.
