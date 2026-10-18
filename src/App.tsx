@@ -19,6 +19,7 @@ import { supabase } from "@/utils/supabaseClient";
 import { warnNotificationsBlocked } from "@/utils/desktopNotifications";
 import { useFriendManagement } from "@/hooks/useFriendManagement";
 import { useWorkspaceLoader } from "@/hooks/useWorkspaceLoader";
+import { useDueReminders } from "@/hooks/useDueReminders";
 
 // Direct imports for stacked pages
 import CalendarPage from "@/pages/calendar/CalendarPage";
@@ -81,6 +82,7 @@ const PageContent: FC = () => {
   const { user } = useAuth();
   const { friends, handleRemoveFriend } = useFriendManagement(user?.id);
   useWorkspaceLoader();
+  useDueReminders();
   
   const ActiveComponent = pagesMap[activePage] || SessionPage;
 

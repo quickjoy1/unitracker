@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/utils/supabaseClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateTaskSuccess } from "@/store/appStore";
+import { getLocalTasks, setLocalTasks } from "./taskStorage";
 
 interface TaskStatusPickerProps {
   task: any;
@@ -34,7 +35,12 @@ const TaskStatusPicker = ({ task }: TaskStatusPickerProps) => {
 
     updateTaskSuccess(updated);
 
-    if (!user) return;
+    if (!user) {
+      // Local mode: persist so the status survives a reload
+      setLocalTasks(getLocalTasks().map((t) => (t.id === task.id ? { ...t, ...updated } : t)));
+      window.dispatchEvent(new CustomEvent("localTasksExternalUpdate"));
+      return;
+    }
     const { error } = await supabase
       .from("tasks")
       .update({

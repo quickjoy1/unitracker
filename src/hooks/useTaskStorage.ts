@@ -40,7 +40,10 @@ const normalizeLocalTask = (raw: Record<string, unknown>): Task | null => {
     const id = typeof (raw as any).id === 'string' && (raw as any).id.trim() ? (raw as any).id : generateLocalId();
 
     return {
+        // Keep every saved field (status, start_at, recurrence...) instead of dropping them
+        ...(raw as Record<string, unknown>),
         id,
+        status: typeof (raw as any).status === 'string' ? (raw as any).status : undefined,
         title: String((raw as any).title).slice(0, 500),
         description: typeof (raw as any).description === 'string' ? String((raw as any).description).slice(0, 5000) : undefined,
         deadline: typeof (raw as any).deadline === 'string' ? (raw as any).deadline : undefined,
@@ -164,10 +167,21 @@ export const useTaskStorage = (): TaskStorageHook => {
             }
         };
 
+        // Other components (e.g. status picker) save straight to localStorage, then ask us to reload
+        const handleExternalUpdate = () => {
+            try {
+                setLocalTasks(validateTaskArray(JSON.parse(localStorage.getItem("localTasks") || "[]")));
+            } catch {
+                // Ignore corrupted data
+            }
+        };
+
         window.addEventListener("storage", handleStorageChange);
+        window.addEventListener("localTasksExternalUpdate", handleExternalUpdate);
 
         return () => {
             window.removeEventListener("storage", handleStorageChange);
+            window.removeEventListener("localTasksExternalUpdate", handleExternalUpdate);
         };
     }, [setTasks]);
 
