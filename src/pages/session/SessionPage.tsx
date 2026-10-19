@@ -6,6 +6,7 @@ import { Helmet } from "react-helmet-async";
 import NoiseGenerator from "@/pages/session/NoiseGenerator";
 import ScratchPad from "@/pages/session/ScratchPad";
 import UnifiedTimer from "@/pages/session/UnifiedTimer";
+import NotificationsPanel from "@/pages/session/NotificationsPanel";
 
 const SessionPage = memo(() => {
   const ui = useUi();
@@ -97,6 +98,11 @@ const SessionPage = memo(() => {
           {/* Timers full width */}
           <motion.div variants={item} className="w-full" data-tour="session-timer">
             <UnifiedTimer isSynced={isSynced} isRunning={isRunning} />
+          </motion.div>
+
+          {/* Notifications: upcoming deadlines + reminder history */}
+          <motion.div variants={item} className="w-full">
+            <NotificationsPanel />
           </motion.div>
         </motion.div>
       </div>

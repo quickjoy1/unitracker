@@ -1,58 +1,83 @@
 import { useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import { isTaskDone } from "@/constants/taskStatus";
 import { useTasksOnly } from "@/store/appStore";
-import {
-  getDesktopPermission,
-  requestDesktopPermission,
-  showDesktopNotification,
-} from "@/utils/desktopNotifications";
+import { useNotificationStore } from "@/store/notificationStore";
+import { planDelivery, planReminders, type Tier } from "@/utils/reminderEngine";
+import { getDesktopPermission, requestDesktopPermission, showDesktopNotification } from "@/utils/desktopNotifications";
 
-const STORAGE_KEY = "dueReminderSent";
 const CHECK_EVERY_MS = 60_000;
-const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
+/** Gap between two popups so they arrive as a calm flow instead of a burst. */
+const SPACING_MS = 5_000;
 
-type Tier = "day" | "hour" | "due" | "overdue";
+export { parseDeadline, getReminderTier } from "@/utils/reminderEngine";
 
-/** Date-only deadlines ("2026-10-20") count as due at the end of that day (local time). */
-export const parseDeadline = (deadline?: string | null): number | null => {
-  if (!deadline) return null;
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(deadline);
-  const ms = new Date(dateOnly ? `${deadline}T23:59:00` : deadline).getTime();
-  return Number.isNaN(ms) ? null : ms;
-};
+interface Popup {
+  key: string;
+  message: string;
+  tier: Tier;
+}
 
-/** Which reminder (if any) a task needs right now. Highest urgency wins; one reminder per check. */
-export const getReminderTier = (dueMs: number, now: number): Tier | null => {
-  const left = dueMs - now;
-  if (left <= -HOUR) return "overdue";
-  if (left <= 0) return "due";
-  if (left <= HOUR) return "hour";
-  if (left <= DAY) return "day";
-  return null;
-};
+// One shared queue: popups leave one at a time, even if several checks add to it
+const queue: Popup[] = [];
+let draining = false;
 
-const MESSAGES: Record<Tier, (title: string) => string> = {
-  day: (t) => `Due within 24 hours: ${t}`,
-  hour: (t) => `Due within 1 hour: ${t}`,
-  due: (t) => `Due now: ${t}`,
-  overdue: (t) => `Overdue: ${t}`,
-};
-
-const loadSent = (): Record<string, number> => {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  } catch {
-    return {};
+const show = (p: Popup) => {
+  const urgent = p.tier === "overdue" || p.tier === "due";
+  if (document.visibilityState === "visible") {
+    // User is looking at the app: an in-app toast is enough
+    toast[urgent ? "error" : "warning"](p.message, { toastId: p.key, autoClose: 9000 });
+  } else {
+    // Tab in the background: use a system notification
+    showDesktopNotification("Task reminder", { body: p.message, tag: p.key });
   }
 };
 
-/** Watches task deadlines and reminds once per tier (overdue repeats once a day). Runs while the app is open. */
+const drain = () => {
+  if (draining) return;
+  draining = true;
+  const step = () => {
+    const next = queue.shift();
+    if (!next) {
+      draining = false;
+      return;
+    }
+    show(next);
+    window.setTimeout(step, SPACING_MS);
+  };
+  step();
+};
+
+/**
+ * Watches task deadlines. Every reminder is saved to the notification list (Session > Notifications);
+ * popups are spaced out, and a pile-up (e.g. after being away) becomes a single summary popup.
+ * Runs while the app is open in a browser tab.
+ */
 export const useDueReminders = () => {
   const tasks = useTasksOnly();
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
+
+  const run = useRef(() => {
+    const store = useNotificationStore.getState();
+    const current = tasksRef.current;
+    const now = Date.now();
+
+    const fresh = planReminders(current, new Set(store.items.map((i) => i.key)), now);
+    if (fresh.length) {
+      store.addMany(fresh);
+      const { individual, digest } = planDelivery(fresh);
+      queue.push(...individual);
+      if (digest) queue.push({ key: `digest-${now}`, ...digest });
+      drain();
+    }
+
+    // Tasks that were finished or deleted no longer need attention
+    const openIds = new Set(current.filter((t) => !t.completed && t.status !== "completed").map((t) => t.id));
+    if (current.length > 0) {
+      const stale = store.items.filter((i) => !i.read && !openIds.has(i.taskId)).map((i) => i.taskId);
+      if (stale.length) store.markTasksRead(stale);
+    }
+  });
 
   useEffect(() => {
     // Browsers only allow the permission prompt from a user gesture
@@ -61,56 +86,19 @@ export const useDueReminders = () => {
     };
     window.addEventListener("click", askOnce, { once: true });
 
-    const check = () => {
-      const now = Date.now();
-      const sent = loadSent();
-      const alive = new Set<string>();
-      let changed = false;
-
-      for (const task of tasksRef.current) {
-        if (isTaskDone(task.status) || task.completed) continue;
-        const dueMs = parseDeadline(task.deadline);
-        if (dueMs === null) continue;
-        const tier = getReminderTier(dueMs, now);
-        if (!tier) continue;
-
-        // Key includes the deadline so changing it re-arms reminders; overdue also keys on the day
-        const day = tier === "overdue" ? `-${new Date(now).toISOString().slice(0, 10)}` : "";
-        const key = `${task.id}|${task.deadline}|${tier}${day}`;
-        alive.add(key);
-        if (sent[key]) continue;
-
-        sent[key] = now;
-        changed = true;
-        const message = MESSAGES[tier](task.title);
-        toast[tier === "overdue" || tier === "due" ? "error" : "warning"](message, { autoClose: 8000 });
-        showDesktopNotification("Task reminder", { body: message, tag: key });
-      }
-
-      // Drop records older than 3 days so storage doesn't grow forever
-      for (const key of Object.keys(sent)) {
-        if (!alive.has(key) && now - (sent[key] ?? 0) > 3 * DAY) {
-          delete sent[key];
-          changed = true;
-        }
-      }
-      if (changed) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(sent));
-        } catch {
-          // storage full or blocked: reminders still show this session
-        }
-      }
-    };
-
-    check();
-    const id = window.setInterval(check, CHECK_EVERY_MS);
-    const onVisible = () => document.visibilityState === "visible" && check();
+    const id = window.setInterval(() => run.current(), CHECK_EVERY_MS);
+    const onVisible = () => document.visibilityState === "visible" && run.current();
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("click", askOnce);
     };
-  }, [tasks.length]);
+  }, []);
+
+  // Check shortly after tasks load or change (debounced so a bulk load counts as one change)
+  useEffect(() => {
+    const t = window.setTimeout(() => run.current(), 1500);
+    return () => window.clearTimeout(t);
+  }, [tasks]);
 };
