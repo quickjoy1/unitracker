@@ -1,4 +1,4 @@
-import { Bell, BellOff, Clock, Flag, GripVertical, LogOut, Minimize2, MoreVertical, PictureInPicture2, RefreshCw, RefreshCwOff, Settings, Timer as TimerIcon, Trash2, Watch } from "lucide-react";
+import { Bell, BellOff, Clock, Flag, GripVertical, ListChecks, LogOut, Maximize2, Minimize2, MoreVertical, PictureInPicture2, RefreshCw, RefreshCwOff, Settings, Timer as TimerIcon, Trash2, Watch } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
@@ -33,6 +33,37 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
   const [dragOverId, setDragOverId] = useState<TimerId | null>(null);
   const dragIdRef = useRef<TimerId | null>(null);
   const [studyMenuOpen, setStudyMenuOpen] = useState(false);
+
+  // ── Full-screen clock (big colourful digits on black) ─────────────────────
+  const [fsId, setFsId] = useState<TimerId | null>(null);
+  const panelRefs = useRef<Partial<Record<TimerId, HTMLElement | null>>>({});
+
+  const exitFullscreen = useCallback(() => {
+    setFsId(null);
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+  }, []);
+
+  const toggleFullscreen = (id: TimerId) => {
+    if (fsId === id) {
+      exitFullscreen();
+      return;
+    }
+    setFsId(id);
+    // Real browser full screen when available; the CSS overlay covers the page either way
+    void panelRefs.current[id]?.requestFullscreen?.().catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!fsId) return;
+    const onChange = () => { if (!document.fullscreenElement) setFsId(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") exitFullscreen(); };
+    document.addEventListener("fullscreenchange", onChange);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [fsId, exitFullscreen]);
 
   // ── Floating window (Document Picture-in-Picture) ─────────────────────────
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
@@ -358,12 +389,15 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
             <motion.div
               variants={item}
               key={id}
-              draggable
+              ref={(el: HTMLDivElement | null) => { panelRefs.current[id] = el; }}
+              draggable={fsId === null}
               onDragStart={() => handleDragStart(id)}
               onDragOver={(e) => handleDragOver(e, id)}
               onDrop={(e) => handleDrop(e, id)}
               onDragEnd={handleDragEnd}
               className={`timer-panel w-full h-72 ${config.panelClass} ${
+                fsId === id ? `timer-panel-fs timer-panel-fs-${id}` : ""
+              } ${
                 draggedId === id ? "timer-panel-dragging" : ""
               } ${
                 dragOverId === id ? "timer-panel-drag-over" : ""
@@ -374,6 +408,24 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
                 <Icon size={18} />
                 <span>{config.label}</span>
                 <div className="flex items-center gap-0.5 ml-auto">
+                  {id === "study" && !pipWindow && (
+                    <button
+                      onClick={() => window.dispatchEvent(new CustomEvent("study-open-task-picker"))}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors"
+                      aria-label="Study a task" title="Pick a task and start the timer"
+                    >
+                      <ListChecks size={16} /> <span className="timer-fs-hide-label">Study a task</span>
+                    </button>
+                  )}
+                  {!pipWindow && (
+                    <button
+                      onClick={() => toggleFullscreen(id)}
+                      className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors"
+                      aria-label={fsId === id ? "Exit full screen" : "Full screen clock"} title={fsId === id ? "Exit full screen (Esc)" : "Full screen clock"}
+                    >
+                      {fsId === id ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                    </button>
+                  )}
                   {renderActions(id)}
                 </div>
               </div>

@@ -807,7 +807,7 @@ const Countdown: React.FC<CountdownProps> = ({
       </div>}
 
       {/* Timer display - circular ring when running or paused, editable inputs when stopped */}
-      <div className="flex-1 flex items-center justify-center py-2">
+      <div className="flex-1 flex items-center justify-center py-2" role="timer" aria-label="Current countdown time">
         {isCountdownRunning || pausedSecondsLeft !== null ? (
           (() => {
             const isPaused = !isCountdownRunning && pausedSecondsLeft !== null;

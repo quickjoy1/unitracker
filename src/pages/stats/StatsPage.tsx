@@ -4,6 +4,7 @@ import { useFetchTasks, useWorkspace } from '@/store/appStore';
 import { Helmet } from "react-helmet-async";
 import Statistics from '@/pages/stats/Stats';
 import StatsChartsPanel from '@/pages/stats/StatsChartsPanel';
+import TaskStudyTimeCard from '@/pages/stats/TaskStudyTimeCard';
 import { fetchLaps } from '@/store/LapActions';
 import { useAuth } from '@/hooks/useAuth';
 import { useLapRealtimeSubscription } from '@/hooks/useLapRealtimeSubscription';
@@ -69,6 +70,7 @@ const StatsPage = memo(() => {
         {/* Charts and other content below */}
         <div className="space-y-3">
         <Statistics />
+          <TaskStudyTimeCard />
           <StatsChartsPanel />
         </div>
       </div>
