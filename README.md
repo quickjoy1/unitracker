@@ -60,26 +60,6 @@ npm install --legacy-peer-deps   # only needed if package.json changed
 
 If you want this to happen without typing, set up a scheduled task (Windows Task Scheduler, or cron on Mac/Linux) that runs `git -C path/to/folder pull` every so often. Git cannot pull on its own without something running it.
 
-**To send your own local changes back to GitHub:**
-
-```bash
-git add -A
-git commit -m "describe your change"
-git push
-```
-
-You will be asked to sign in to GitHub the first time (use a personal access token as the password, or run `gh auth login` if you have the GitHub CLI).
-
-**To also receive updates from the original project** (rickypcyt/unitracker):
-
-```bash
-git remote add upstream https://github.com/rickypcyt/unitracker.git
-git fetch upstream
-git merge upstream/main
-```
-
-If Git reports conflicts, they will be in files both sides changed (most likely `src/utils/supabaseClient.ts` or `src/hooks/useTaskStorage.ts`). Fix them, then `git add` and `git commit`.
-
 ## Scripts
 
 | Command | What it does |
