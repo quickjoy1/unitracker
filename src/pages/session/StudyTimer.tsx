@@ -1147,7 +1147,7 @@ const StudyTimer = ({
       </div>}
 
       {/* Timer display - circular progress ring */}
-      <div className="w-full flex-1 flex flex-col items-center justify-center py-2" role="timer" aria-label="Current session time">
+      <div className="w-full flex-1 flex flex-col items-center justify-center py-2" role="timer" aria-label="Current session time" data-state={studyState.sessionStatus === "paused" ? "paused" : isStudyRunningRedux ? "running" : "idle"}>
         <div className="relative group">
         {(() => {
           const totalSec = safeNumber(studyState.time);
@@ -1178,7 +1178,7 @@ const StudyTimer = ({
                     <>
                       <span className={`text-lg font-mono font-bold tabular-nums leading-none ${
                         isStudyRunningRedux ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
-                      }`}>
+                      }`} data-seg="hours">
                         {h.toString().padStart(2, '0')}
                       </span>
                       <span className={`text-base font-mono font-bold leading-none ${
@@ -1186,7 +1186,7 @@ const StudyTimer = ({
                       }`}>:</span>
                       <span className={`text-lg font-mono font-bold tabular-nums leading-none ${
                         isStudyRunningRedux ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
-                      }`}>
+                      }`} data-seg="minutes">
                         {m.toString().padStart(2, '0')}
                       </span>
                       <span className={`text-base font-mono font-bold leading-none ${
@@ -1194,7 +1194,7 @@ const StudyTimer = ({
                       }`}>:</span>
                       <span className={`text-lg font-mono font-bold tabular-nums leading-none ${
                         isStudyRunningRedux ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
-                      }`}>
+                      }`} data-seg="seconds">
                         {s.toString().padStart(2, '0')}
                       </span>
                     </>
@@ -1202,7 +1202,7 @@ const StudyTimer = ({
                     <>
                       <span className={`text-2xl font-mono font-bold tabular-nums leading-none ${
                         isStudyRunningRedux ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
-                      }`}>
+                      }`} data-seg="minutes">
                         {m.toString().padStart(2, '0')}
                       </span>
                       <span className={`text-xl font-mono font-bold leading-none ${
@@ -1210,7 +1210,7 @@ const StudyTimer = ({
                       }`}>:</span>
                       <span className={`text-2xl font-mono font-bold tabular-nums leading-none ${
                         isStudyRunningRedux ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
-                      }`}>
+                      }`} data-seg="seconds">
                         {s.toString().padStart(2, '0')}
                       </span>
                     </>

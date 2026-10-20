@@ -1297,7 +1297,7 @@ const Pomodoro: React.FC<PomodoroProps> = ({ hideHeader = false }) => {
       </div>}
 
       {/* Timer Display - circular progress ring */}
-      <div className="relative w-full flex-1 flex flex-col items-center justify-center py-2" role="timer" aria-label="Current pomodoro time">
+      <div className="relative w-full flex-1 flex flex-col items-center justify-center py-2" role="timer" aria-label="Current pomodoro time" data-state={isPomodoroRunning ? "running" : pomoState.manuallyPaused ? "paused" : "idle"}>
         {(() => {
           const roundedSeconds = Math.round(pomoState.timeLeft);
           const mins = Math.floor(roundedSeconds / 60);
@@ -1329,11 +1329,11 @@ const Pomodoro: React.FC<PomodoroProps> = ({ hideHeader = false }) => {
               </svg>
               <div className={`absolute inset-0 flex flex-col items-center justify-center ${isBreak && !isPaused ? 'animate-pulse' : ''}`}>
                 <div className="flex items-center gap-0.5">
-                  <span className="text-2xl font-mono font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                  <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="minutes" style={{ color: ringColor }}>
                     {mins.toString().padStart(2, '0')}
                   </span>
                   <span className="text-xl font-mono font-bold leading-none" style={{ color: ringColor }}>:</span>
-                  <span className="text-2xl font-mono font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                  <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="seconds" style={{ color: ringColor }}>
                     {secs.toString().padStart(2, '0')}
                   </span>
                 </div>

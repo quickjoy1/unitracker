@@ -807,7 +807,7 @@ const Countdown: React.FC<CountdownProps> = ({
       </div>}
 
       {/* Timer display - circular ring when running or paused, editable inputs when stopped */}
-      <div className="flex-1 flex items-center justify-center py-2" role="timer" aria-label="Current countdown time">
+      <div className="flex-1 flex items-center justify-center py-2" role="timer" aria-label="Current countdown time" data-state={isCountdownRunning ? "running" : pausedSecondsLeft !== null ? "paused" : "idle"}>
         {isCountdownRunning || pausedSecondsLeft !== null ? (
           (() => {
             const isPaused = !isCountdownRunning && pausedSecondsLeft !== null;
@@ -841,21 +841,21 @@ const Countdown: React.FC<CountdownProps> = ({
                   <div className="flex items-center gap-0.5">
                     {h > 0 ? (
                       <>
-                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="hours" style={{ color: ringColor }}>
                           {h.toString().padStart(2, '0')}
                         </span>
                         <span className="text-xl font-mono font-bold leading-none" style={{ color: ringColor }}>:</span>
-                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="minutes" style={{ color: ringColor }}>
                           {m.toString().padStart(2, '0')}
                         </span>
                       </>
                     ) : (
                       <>
-                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="minutes" style={{ color: ringColor }}>
                           {m.toString().padStart(2, '0')}
                         </span>
                         <span className="text-xl font-mono font-bold leading-none" style={{ color: ringColor }}>:</span>
-                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="seconds" style={{ color: ringColor }}>
                           {s.toString().padStart(2, '0')}
                         </span>
                       </>
@@ -899,6 +899,7 @@ const Countdown: React.FC<CountdownProps> = ({
                 }
                 const isFocused = focusedField === field && !isRunningGlobal;
                 return <React.Fragment key={field}>
+                    <div className="flex flex-col items-center">
                     <input
                       ref={inputRefs.current[field]}
                       type="text"
@@ -916,7 +917,10 @@ const Countdown: React.FC<CountdownProps> = ({
                       tabIndex={idx + 1}
                       style={{ letterSpacing: '0.05em' }}
                       disabled={isCountdownRunning}
+                      data-seg={field}
                     />
+                    <span className="timer-seg-label">{field}</span>
+                    </div>
                     {field !== 'minutes' && <span className="text-xl font-mono font-bold leading-none text-[var(--text-secondary)]">:</span>}
                   </React.Fragment>;
               })}
