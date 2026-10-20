@@ -1,6 +1,9 @@
 import { Bell, BellOff, Clock, Flag, GripVertical, ListChecks, LogOut, Maximize2, Minimize2, MoreVertical, PictureInPicture2, RefreshCw, RefreshCwOff, Settings, Timer as TimerIcon, Trash2, Watch } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "react-toastify";
+import { openFloatWindow, type FloatHandle } from "@/utils/floatWindow";
+import { attachDigitRoll } from "@/utils/digitRoll";
 import { motion } from "framer-motion";
 
 import Countdown from "./Countdown";
@@ -9,15 +12,6 @@ import StudyTimer from "./StudyTimer";
 import { useAppStore } from "@/store/appStore";
 
 type TimerId = "study" | "pomodoro" | "countdown";
-
-type DocumentPipApi = {
-  requestWindow: (options?: { width?: number; height?: number }) => Promise<Window>;
-};
-
-const getDocumentPip = (): DocumentPipApi | null =>
-  typeof window !== "undefined"
-    ? (window as unknown as { documentPictureInPicture?: DocumentPipApi }).documentPictureInPicture ?? null
-    : null;
 
 const TIMER_CONFIG: Record<TimerId, { label: string; icon: typeof Clock; panelClass: string; labelClass: string }> = {
   study: { label: "Study", icon: Clock, panelClass: "timer-panel-study", labelClass: "" },
@@ -65,20 +59,37 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
     };
   }, [fsId, exitFullscreen]);
 
-  // ── Floating window (Document Picture-in-Picture) ─────────────────────────
-  const [pipWindow, setPipWindow] = useState<Window | null>(null);
-  const [pipHosts, setPipHosts] = useState<Partial<Record<TimerId, HTMLElement>>>({});
+  // ── Floating windows: one per timer ───────────────────────────────────────
+  // Each timer lives in a stable "holder" element that is only MOVED between its panel and its
+  // floating window. The timer component stays mounted the whole time, so a running timer keeps
+  // running (re-creating it in the new window is what used to restart it).
+  const [floating, setFloating] = useState<Partial<Record<TimerId, FloatHandle>>>({});
   const [panelHosts, setPanelHosts] = useState<Partial<Record<TimerId, HTMLElement>>>({});
-  const pipRef = useRef<Window | null>(null);
+  const floatingRef = useRef(floating);
+  floatingRef.current = floating;
+  const panelHostsRef = useRef(panelHosts);
+  panelHostsRef.current = panelHosts;
+  const holders = useRef<Partial<Record<TimerId, HTMLDivElement>>>({});
+  const disposers = useRef<Array<() => void>>([]);
   const hostCallbacksRef = useRef<Partial<Record<TimerId, (el: HTMLDivElement | null) => void>>>({});
-  const pipSupported = getDocumentPip() !== null;
 
-  useEffect(() => {
-    pipRef.current = pipWindow;
-  }, [pipWindow]);
+  const getHolder = useCallback((id: TimerId) => {
+    let holder = holders.current[id];
+    if (!holder) {
+      holder = document.createElement("div");
+      holder.className = "timer-holder flex-1 min-h-0 flex flex-col";
+      holder.style.position = "relative";
+      disposers.current.push(attachDigitRoll(holder));
+      holders.current[id] = holder;
+    }
+    return holder;
+  }, []);
 
-  // Close the floating window when leaving the page
-  useEffect(() => () => { pipRef.current?.close(); }, []);
+  // Close floating windows and stop animation observers when leaving the page
+  useEffect(() => () => {
+    Object.values(floatingRef.current).forEach(h => h?.win.close());
+    disposers.current.forEach(d => d());
+  }, []);
 
   const getHostRef = useCallback((id: TimerId) => {
     let cb = hostCallbacksRef.current[id];
@@ -94,74 +105,35 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
     return cb;
   }, []);
 
-  const openPip = async () => {
-    const dpip = getDocumentPip();
-    if (!dpip) return;
-    if (pipWindow) { pipWindow.focus(); return; }
-    try {
-      const pip = await dpip.requestWindow({
-        width: Math.min(1200, Math.max(340, visibleTimers.length * 260 + 24)),
-        height: 320,
-      });
-
-      // Copy all stylesheets so the PiP window matches the app theme
-      document.querySelectorAll("style, link[rel='stylesheet']").forEach(node => {
-        if (node instanceof HTMLLinkElement) {
-          const link = pip.document.createElement("link");
-          link.rel = "stylesheet";
-          link.href = node.href;
-          pip.document.head.appendChild(link);
-        } else if (node instanceof HTMLStyleElement) {
-          const style = pip.document.createElement("style");
-          style.textContent = node.textContent;
-          pip.document.head.appendChild(style);
-        }
-      });
-
-      // Mirror theme classes/vars (dark/light, accent color, colorScheme) and keep them in sync
-      const syncTheme = () => {
-        pip.document.documentElement.className = document.documentElement.className;
-        pip.document.documentElement.style.cssText = document.documentElement.style.cssText;
-      };
-      syncTheme();
-      const themeObserver = new MutationObserver(syncTheme);
-      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
-
-      pip.document.title = "UniTracker — Timers";
-      pip.document.body.className = "pip-body";
-
-      // One labelled slot per visible timer; the timer components get portaled into these
-      const stack = pip.document.createElement("div");
-      stack.className = "pip-timer-stack";
-      const hosts: Partial<Record<TimerId, HTMLElement>> = {};
-      visibleTimers.forEach(id => {
-        const slot = pip.document.createElement("div");
-        slot.className = "pip-timer-slot";
-        const label = pip.document.createElement("div");
-        label.className = `pip-slot-label pip-slot-label-${id}`;
-        label.textContent = TIMER_CONFIG[id].label;
-        const host = pip.document.createElement("div");
-        host.className = "pip-slot-host";
-        slot.append(label, host);
-        stack.appendChild(slot);
-        hosts[id] = host;
-      });
-      pip.document.body.appendChild(stack);
-
-      pip.addEventListener("pagehide", () => {
-        themeObserver.disconnect();
-        setPipWindow(null);
-        setPipHosts({});
-      });
-
-      setPipHosts(hosts);
-      setPipWindow(pip);
-    } catch {
-      // User dismissed the PiP request or the browser refused it
+  const openFloat = async (id: TimerId) => {
+    const existing = floatingRef.current[id];
+    if (existing) { existing.win.focus(); return; }
+    if (fsId) exitFullscreen();
+    // Document Picture-in-Picture allows one window at a time; further timers use normal pop-ups
+    const docPipFree = !Object.values(floatingRef.current).some(h => h?.kind === "pip");
+    const handle = await openFloatWindow({ id, label: TIMER_CONFIG[id].label, preferDocPip: docPipFree });
+    if (!handle) {
+      toast.error("Could not open a floating window. Allow pop-ups for this site and try again.");
+      return;
     }
+    const onGone = () => {
+      handle.dispose();
+      // Put the timer back on the page right away, before the window's document goes away
+      const holder = holders.current[id];
+      const back = panelHostsRef.current[id];
+      if (holder && back && holder.parentElement !== back) back.appendChild(holder);
+      setFloating(prev => {
+        if (prev[id] !== handle) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    };
+    handle.win.addEventListener("pagehide", onGone);
+    setFloating(prev => ({ ...prev, [id]: handle }));
   };
 
-  const closePip = useCallback(() => pipWindow?.close(), [pipWindow]);
+  const dockFloat = (id: TimerId) => floatingRef.current[id]?.win.close();
 
   // Sync state from store
   const syncPomodoro = useAppStore(s => s.syncSettings.syncPomodoroWithTimer);
@@ -228,6 +200,15 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
     id === "study" || (id === "pomodoro" && showPomodoro) || (id === "countdown" && showCountdown)
   );
 
+  // Move each timer's holder into its current home: the floating window if it has one, else its panel
+  useEffect(() => {
+    visibleTimers.forEach(id => {
+      const holder = getHolder(id);
+      const target = floating[id]?.host ?? panelHosts[id];
+      if (target && holder.parentElement !== target) target.appendChild(holder);
+    });
+  });
+
   const handleDragStart = (id: TimerId) => {
     setDraggedId(id);
     dragIdRef.current = id;
@@ -274,12 +255,12 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
   };
 
   const renderActions = (id: TimerId) => {
-    if (pipWindow) {
+    if (floating[id]) {
       return (
         <button
-          onClick={closePip}
+          onClick={() => dockFloat(id)}
           className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors"
-          aria-label="Dock timers back" title="Dock timers back"
+          aria-label="Dock timer back" title="Dock this timer back"
         >
           <Minimize2 size={18} />
         </button>
@@ -384,7 +365,6 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
         {visibleTimers.map(id => {
           const config = TIMER_CONFIG[id];
           const Icon = config.icon;
-          const portalTarget = pipWindow ? pipHosts[id] : panelHosts[id];
           return (
             <motion.div
               variants={item}
@@ -408,7 +388,7 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
                 <Icon size={18} />
                 <span>{config.label}</span>
                 <div className="flex items-center gap-0.5 ml-auto">
-                  {id === "study" && !pipWindow && (
+                  {id === "study" && !floating[id] && (
                     <button
                       onClick={() => window.dispatchEvent(new CustomEvent("study-open-task-picker"))}
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors"
@@ -417,7 +397,16 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
                       <ListChecks size={16} /> <span className="timer-fs-hide-label">Study a task</span>
                     </button>
                   )}
-                  {!pipWindow && (
+                  {!floating[id] && (
+                    <button
+                      onClick={() => openFloat(id)}
+                      className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors"
+                      aria-label="Float this timer" title="Float this timer in its own window"
+                    >
+                      <PictureInPicture2 size={18} />
+                    </button>
+                  )}
+                  {!floating[id] && (
                     <button
                       onClick={() => toggleFullscreen(id)}
                       className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors"
@@ -429,39 +418,27 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
                   {renderActions(id)}
                 </div>
               </div>
-              <div ref={getHostRef(id)} className={pipWindow ? "hidden" : "flex-1 min-h-0 flex flex-col"} />
-              {pipWindow ? (
+              <div ref={getHostRef(id)} className={floating[id] ? "hidden" : "flex-1 min-h-0 flex flex-col"} />
+              {floating[id] ? (
                 <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 text-xs text-[var(--text-secondary)]">
                   <PictureInPicture2 size={18} />
                   <span>Floating</span>
                   <button
-                    onClick={closePip}
+                    onClick={() => dockFloat(id)}
                     className="timer-ctrl-btn"
-                    aria-label="Dock timers back" title="Dock timers back"
+                    aria-label="Dock timer back" title="Dock this timer back"
                   >
                     <Minimize2 size={16} />
                   </button>
                 </div>
               ) : null}
-              {portalTarget ? createPortal(renderTimer(id), portalTarget) : null}
             </motion.div>
           );
         })}
       </motion.div>
 
-      {/* Floating window toggle */}
-      {pipSupported && !pipWindow && (
-        <div className="flex justify-end">
-          <button
-            onClick={openPip}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
-            aria-label="Float timers in a window" title="Open timers in a floating window"
-          >
-            <PictureInPicture2 size={14} />
-            Float timers
-          </button>
-        </div>
-      )}
+      {/* Each timer is rendered once, into its holder, and the holder is moved between panel and window */}
+      {visibleTimers.map(id => createPortal(renderTimer(id), getHolder(id), id))}
     </div>
   );
 };

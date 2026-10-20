@@ -2045,5 +2045,51 @@ svg.lucide {
   margin: 0 !important;
 }
 .pip-slot-host .timer-ctrl-btn { padding: 0.45rem 0.7rem; }
-.pip-slot-host .timer-adjust-btn { display: none; }
 .pip-slot-host [role="timer"] .timer-ctrl-btn { position: absolute !important; left: 0 !important; top: 0 !important; right: auto !important; bottom: auto !important; margin: 0 !important; }
+
+/* ══ Clock animations (full screen + floating windows) ═══════════════════ */
+.timer-holder .digit-ghost-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: visible; }
+.digit-ghost {
+  position: absolute;
+  white-space: nowrap;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  animation: digit-out 0.42s cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+}
+@keyframes digit-out {
+  from { opacity: 0.9; transform: translateY(0); filter: blur(0); }
+  to   { opacity: 0;   transform: translateY(-0.4em); filter: blur(3px); }
+}
+@keyframes digit-in {
+  from { -webkit-text-fill-color: rgba(255, 255, 255, 0.12); }
+  to   { -webkit-text-fill-color: currentcolor; }
+}
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg].digit-tick { animation: digit-in 0.45s ease-out; }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after { -webkit-text-fill-color: currentcolor; }
+
+/* colon dots breathe while running */
+@keyframes dot-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"] span.font-mono:not([data-seg])::before,
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"] span.font-mono:not([data-seg])::after {
+  animation: dot-breathe 1s ease-in-out infinite;
+}
+/* "In progress" pill glows softly */
+@keyframes pill-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  50% { box-shadow: 0 0 18px 2px rgba(34, 197, 94, 0.22); }
+}
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"]::after { animation: pill-glow 2.4s ease-in-out infinite; }
+/* full screen opens with a soft zoom; buttons press in */
+@keyframes fs-in { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+.timer-panel-fs { animation: fs-in 0.28s ease-out; }
+:is(.timer-panel-fs, .pip-slot-host) :is(.timer-ctrl-btn, .timer-adjust-btn):active { transform: scale(0.96) !important; }
+
+/* floating windows hold a single timer: give it more room */
+.pip-single .pip-slot-host { --clock-size: clamp(2.6rem, 14vw, 5.6rem); --label-size: 0.62rem; }
+.pip-single .pip-timer-stack { padding: 0.75rem; }
+.pip-slot-host .timer-adjust-btn { display: inline-flex; padding: 0.25rem 0.6rem; font-size: 0.72rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .digit-ghost, .timer-panel-fs, :is(.timer-panel-fs, .pip-slot-host) [role="timer"] * { animation: none !important; }
+}
