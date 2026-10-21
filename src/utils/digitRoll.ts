@@ -59,7 +59,7 @@ export function attachDigitRoll(holder: HTMLElement): () => void {
     const done = () => { if (finished) return; finished = true; box.remove(); seg.classList.remove("digit-hide"); };
     const lastOld = box.querySelector(".digit-old");
     if (lastOld) lastOld.addEventListener("animationend", done, { once: true });
-    window.setTimeout(done, 500); // safety net
+    window.setTimeout(done, 400); // safety net
   };
 
   const observer = new MutationObserver((mutations) => {

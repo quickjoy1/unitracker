@@ -2054,11 +2054,11 @@ svg.lucide {
 .digit-col .digit-old, .digit-col .digit-new { display: block; }
 .digit-col .digit-new { position: absolute; left: 0; right: 0; bottom: 0; }
 .digit-col .digit-old, .digit-col .digit-new { will-change: transform; backface-visibility: hidden; }
-.digit-col .digit-old { position: relative; animation: digit-old 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.digit-col .digit-new { animation: digit-new 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
-/* soft crossfade with a short drop: the digits only travel about 40% of their height */
-@keyframes digit-old { from { transform: translate3d(0, 0, 0); opacity: 1; } to { transform: translate3d(0, 40%, 0); opacity: 0; } }
-@keyframes digit-new { from { transform: translate3d(0, -40%, 0); opacity: 0; } to { transform: translate3d(0, 0, 0); opacity: 1; } }
+.digit-col .digit-old { position: relative; animation: digit-old 0.16s cubic-bezier(0.3, 0, 0.3, 1) forwards; }
+.digit-col .digit-new { animation: digit-new 0.16s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+/* only the changing digit moves: old drops 15% and goes very faint, new comes from 10% above, faint, and brightens */
+@keyframes digit-old { 0% { transform: translate3d(0, 0, 0); opacity: 0.55; } 100% { transform: translate3d(0, 15%, 0); opacity: 0.04; } }
+@keyframes digit-new { 0% { transform: translate3d(0, -10%, 0); opacity: 0.08; } 100% { transform: translate3d(0, 0, 0); opacity: 1; } }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg].digit-hide { -webkit-text-fill-color: transparent; }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after { -webkit-text-fill-color: currentcolor; }
 
