@@ -1,4 +1,4 @@
-import { Bell, BellOff, Clock, Flag, GripVertical, ListChecks, LogOut, Maximize2, Minimize2, MoreVertical, PictureInPicture2, RefreshCw, RefreshCwOff, Settings, Timer as TimerIcon, Trash2, Watch } from "lucide-react";
+import { Bell, BellOff, Clock, Flag, GripVertical, LogOut, Maximize2, Minimize2, MoreVertical, PictureInPicture2, RefreshCw, RefreshCwOff, Settings, Timer as TimerIcon, Trash2, Watch } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
@@ -388,15 +388,6 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
                 <Icon size={18} />
                 <span>{config.label}</span>
                 <div className="flex items-center gap-0.5 ml-auto">
-                  {id === "study" && !floating[id] && (
-                    <button
-                      onClick={() => window.dispatchEvent(new CustomEvent("study-open-task-picker"))}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors"
-                      aria-label="Study a task" title="Pick a task and start the timer"
-                    >
-                      <ListChecks size={16} /> <span className="timer-fs-hide-label">Study a task</span>
-                    </button>
-                  )}
                   {!floating[id] && (
                     <button
                       onClick={() => openFloat(id)}

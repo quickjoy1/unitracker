@@ -1,12 +1,13 @@
-import { Check, Clock, Folder, Play, Target, Timer } from "lucide-react";
+import { Check, Clock, Folder, ListChecks, Play, Target, Timer } from "lucide-react";
 import { FormInput, FormTextarea } from "@/modals/FormElements";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AutocompleteInput from "@/modals/AutocompleteInput";
 import BaseModal from "@/modals/BaseModal";
 import { supabase } from "@/utils/supabaseClient";
-import { useAppStore, useWorkspace } from "@/store/appStore";
-import { StudyService } from "@/services/StudyService";
+import { useAppStore, useWorkspace, useTasksOnly, useUpdateTaskSuccess } from "@/store/appStore";
+import { StudyService, SessionTaskService } from "@/services/StudyService";
+import { formatDue, parseDeadline } from "@/utils/reminderEngine";
 import { ALL_WORKSPACE_ID } from "@/hooks/useTaskBoard";
 
 interface StartSessionModalProps {
@@ -41,6 +42,24 @@ const StartSessionModal = ({
   const [syncCountdown, setSyncCountdown] = useState(syncCountdownWithTimer);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState("");
+  const allTasks = useTasksOnly();
+  const updateTaskSuccess = useUpdateTaskSuccess();
+  const openTasks = useMemo(() => allTasks
+    .filter((t: any) => !t.completed && t.status !== "completed")
+    .map((t: any) => ({ t, due: parseDeadline(t.deadline) }))
+    .sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity)), [allTasks]);
+
+  const pickTask = (id: string) => {
+    setTaskId(id);
+    const hit = openTasks.find(r => r.t.id === id)?.t as any;
+    if (hit) {
+      setSessionTitle(hit.title);
+      setTitleError("");
+      if (hit.assignment) setAssignment(hit.assignment);
+      if (hit.workspace_id) setWorkspaceId(hit.workspace_id);
+    }
+  };
 
   // Pre-select current workspace when modal opens (or null if "All" is selected)
   useEffect(() => {
@@ -93,6 +112,16 @@ const StartSessionModal = ({
         // Clear last notification timestamp so first completion notifies correctly
         localStorage.removeItem('lastPomoNotifyTs');
       } catch {}
+      // Study a task: link it to this session and mark it in progress
+      const picked = openTasks.find(r => r.t.id === taskId)?.t as any;
+      if (picked) {
+        await SessionTaskService.addTaskToSession(session.id, picked.id).catch((e) => console.warn("Could not link task:", e));
+        if (picked.status !== "in_progress") {
+          updateTaskSuccess({ ...picked, status: "in_progress", activetask: true, completed: false, completed_at: null });
+          await supabase.from("tasks").update({ status: "in_progress", activetask: true }).eq("id", picked.id);
+        }
+        window.dispatchEvent(new CustomEvent("refreshStats"));
+      }
       onStart({
         sessionId: session.id,
         title: sessionTitle.trim(),
@@ -147,6 +176,25 @@ const StartSessionModal = ({
             </div>
             
             <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="session-task" className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <ListChecks size={14} className="text-[var(--text-secondary)]" />
+                  Study a task (optional)
+                </label>
+                <select
+                  id="session-task"
+                  value={taskId}
+                  onChange={(e) => pickTask(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg bg-[var(--bg-primary)] border-2 border-[var(--border-primary)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)] transition-colors"
+                >
+                  <option value="">No task, just a session</option>
+                  {openTasks.map(({ t, due }) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}{due !== null ? ` (${formatDue(due, Date.now())})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="session-title" className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">

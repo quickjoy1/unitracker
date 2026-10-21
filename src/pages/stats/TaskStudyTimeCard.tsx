@@ -37,7 +37,7 @@ const TaskStudyTimeCard = () => {
         </div>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-[var(--text-secondary)]">Nothing yet. On the Session page, use "Study a task" in the Study timer and your time shows up here.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Nothing yet. On the Session page, pick a task in "Start Session" and your time shows up here.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((r) => (

@@ -841,12 +841,16 @@ const Countdown: React.FC<CountdownProps> = ({
                   <div className="flex items-center gap-0.5">
                     {h > 0 ? (
                       <>
-                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="hours" style={{ color: ringColor }}>
+                        <span className="text-lg font-mono font-bold tabular-nums leading-none" data-seg="hours" style={{ color: ringColor }}>
                           {h.toString().padStart(2, '0')}
                         </span>
-                        <span className="text-xl font-mono font-bold leading-none" style={{ color: ringColor }}>:</span>
-                        <span className="text-2xl font-mono font-bold tabular-nums leading-none" data-seg="minutes" style={{ color: ringColor }}>
+                        <span className="text-base font-mono font-bold leading-none" style={{ color: ringColor }}>:</span>
+                        <span className="text-lg font-mono font-bold tabular-nums leading-none" data-seg="minutes" style={{ color: ringColor }}>
                           {m.toString().padStart(2, '0')}
+                        </span>
+                        <span className="text-base font-mono font-bold leading-none" style={{ color: ringColor }}>:</span>
+                        <span className="text-lg font-mono font-bold tabular-nums leading-none" data-seg="seconds" style={{ color: ringColor }}>
+                          {s.toString().padStart(2, '0')}
                         </span>
                       </>
                     ) : (

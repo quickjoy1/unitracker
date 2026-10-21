@@ -1,7 +1,7 @@
 import { Check, Clock, Flag, MoreVertical, Pause, Play, RotateCcw, X } from "lucide-react";
 import { SYNC_EVENTS, useEmitSyncEvents } from "@/hooks/study-timer/useStudySync";
 import { useStudyTimer } from "@/hooks/useTimers";
-import { useAppStore, useSessionSyncSettings, useUpdateTaskSuccess } from "@/store/appStore";
+import { useAppStore, useSessionSyncSettings } from "@/store/appStore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DeleteSessionModal from "@/modals/DeleteSessionModal";
 import EditSessionModal from "@/modals/EditSessionModal";
@@ -20,8 +20,7 @@ import { useSessionId } from "@/hooks/study-timer/useSessionId";
 import { useStudyTimerState, type StudyState } from "@/hooks/study-timer/useStudyTimerState";
 import type { PauseEntry } from "@/schemas/timer";
 import { getLocalDateString } from "@/utils/dateUtils";
-import { StudyService, SessionTaskService, type SessionLap } from "@/services/StudyService";
-import StudyTaskPickerModal from "@/modals/StudyTaskPickerModal";
+import { StudyService, type SessionLap } from "@/services/StudyService";
 import { TaskService } from "@/services/TaskService";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -198,8 +197,6 @@ const StudyTimer = ({
   const [studyState, updateStudyState] = useStudyTimerState();
   const [currentSessionId, updateSessionId] = useSessionId();
   const [modalStates, updateModal] = useModalStates();
-  const [taskPickerOpen, setTaskPickerOpen] = useState(false);
-  const updateTaskSuccess = useUpdateTaskSuccess();
   const [isExitChoiceOpen, setExitChoiceOpen] = useState(false);
   const [localResetKey, setLocalResetKey] = useState(0);
 
@@ -974,52 +971,6 @@ const StudyTimer = ({
     }
   }, [updateSessionId, updateStudyState, studyState.sessionTitle, studyState.sessionDescription, updateModal, start, setSyncPomodoroWithTimer, setSyncCountdownWithTimer]);
 
-  // ── Study a task: create a session for it, link it, and start the timer ───
-  const handleStartTask = useCallback(async (task: any) => {
-    setTaskPickerOpen(false);
-    if (currentSessionId) {
-      toast.info("Finish or exit the current session first.");
-      return;
-    }
-    try {
-      const { data, error: userError } = await supabase.auth.getUser();
-      if (userError || !data?.user) throw userError || new Error("User not authenticated");
-      const nextSessionNumber = await StudyService.getNextSessionNumber();
-      const session = await StudyService.createLap({
-        user_id: data.user.id,
-        started_at: new Date().toISOString(),
-        duration: "00:00:00",
-        tasks_completed: 0,
-        name: task.title,
-        description: "",
-        session_number: nextSessionNumber,
-        created_at: new Date().toISOString(),
-        session_assignment: task.assignment || null,
-        workspace_id: task.workspace_id || null,
-      });
-      try {
-        localStorage.setItem("pomodorosThisSession", "0");
-        localStorage.setItem("activeSessionId", session.id);
-        localStorage.removeItem("lastPomoNotifyTs");
-      } catch {}
-      // Link the session to the task so the study time is counted for it
-      await SessionTaskService.addTaskToSession(session.id, task.id).catch((e) => console.warn("[StudyTimer] Could not link task:", e));
-      // Studying a task means it is in progress
-      if (task.status !== "in_progress") {
-        const updated = { ...task, status: "in_progress", activetask: true, completed: false, completed_at: null };
-        updateTaskSuccess(updated);
-        await supabase.from("tasks").update({ status: "in_progress", activetask: true }).eq("id", task.id);
-      }
-      await handleStartSession({ sessionId: session.id, title: task.title });
-      window.dispatchEvent(new CustomEvent("refreshStats"));
-    } catch (e) {
-      console.error("[StudyTimer] Error starting task session:", e);
-      toast.error("Could not start a session for this task.");
-    }
-  }, [currentSessionId, handleStartSession, updateTaskSuccess]);
-
-  useEventListener("study-open-task-picker", () => setTaskPickerOpen(true));
-
   // ── Session selected from SessionsModal ───────────────────────────────────
   const handleSessionSelected = useCallback(async (sessionId: string) => {
     if (!sessionId) return;
@@ -1388,8 +1339,6 @@ const StudyTimer = ({
 
       {/* Modals */}
       <SessionsModal isOpen={modalStates.isSessionsModalOpen} onClose={() => updateModal("isSessionsModalOpen", false)} onSessionSelected={handleSessionSelected} onFinishAllSessions={handleFinishAllSessions} onStartNewSession={handleStartNewSession} />
-
-      <StudyTaskPickerModal isOpen={taskPickerOpen} onClose={() => setTaskPickerOpen(false)} onPick={handleStartTask} />
       <StartSessionModal isOpen={modalStates.isStartModalOpen} onClose={() => updateModal("isStartModalOpen", false)} onStart={handleStartSession} />
 
       {currentSessionId && <FinishSessionModal isOpen={modalStates.isFinishModalOpen} onClose={() => updateModal("isFinishModalOpen", false)} onFinish={handleFinishSession} sessionId={currentSessionId} onSessionDetailsUpdated={fetchCurrentSessionDetails} />}
