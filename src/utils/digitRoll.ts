@@ -28,12 +28,12 @@ export function attachDigitRoll(holder: HTMLElement): () => void {
     const rect = seg.getBoundingClientRect();
     const cs = (doc.defaultView ?? window).getComputedStyle(seg);
     const fs = parseFloat(cs.fontSize) || 48;
-    const lift = fs * 0.7;
+    const pad = fs * 0.12; // small margin so glyph edges are not clipped
     const box = doc.createElement("div");
     box.className = "digit-clip";
     box.style.cssText =
-      `left:${rect.left - hostRect.left}px;top:${rect.top - hostRect.top - lift}px;` +
-      `width:${rect.width}px;height:${rect.height + lift}px;padding-top:${lift}px;` +
+      `left:${rect.left - hostRect.left}px;top:${rect.top - hostRect.top - pad}px;` +
+      `width:${rect.width}px;height:${rect.height + pad * 2}px;padding:${pad}px 0;` +
       `font-size:${cs.fontSize};font-family:${cs.fontFamily};font-weight:${cs.fontWeight};color:${cs.color};`;
     const n = Math.max(now.length, oldText.length);
     for (let i = 0; i < n; i++) {
@@ -55,8 +55,11 @@ export function attachDigitRoll(holder: HTMLElement): () => void {
     }
     layer.appendChild(box);
     seg.classList.add("digit-hide");
-    const done = () => { box.remove(); seg.classList.remove("digit-hide"); };
-    window.setTimeout(done, 300);
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; box.remove(); seg.classList.remove("digit-hide"); };
+    const lastOld = box.querySelector(".digit-old");
+    if (lastOld) lastOld.addEventListener("animationend", done, { once: true });
+    window.setTimeout(done, 500); // safety net
   };
 
   const observer = new MutationObserver((mutations) => {

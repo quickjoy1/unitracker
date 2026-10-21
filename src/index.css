@@ -2053,16 +2053,12 @@ svg.lucide {
 .digit-col { position: relative; display: block; flex: none; width: 1ch; text-align: center; font-variant-numeric: tabular-nums; }
 .digit-col .digit-old, .digit-col .digit-new { display: block; }
 .digit-col .digit-new { position: absolute; left: 0; right: 0; bottom: 0; }
-.digit-col .digit-old { position: relative; animation: digit-old 0.28s cubic-bezier(0.25, 0.8, 0.3, 1) forwards; }
-.digit-col .digit-new { animation: digit-new 0.28s cubic-bezier(0.25, 0.8, 0.3, 1) both; }
-@keyframes digit-old {
-  from { transform: translateY(0); opacity: 1; }
-  to   { transform: translateY(0.75em); opacity: 0; }
-}
-@keyframes digit-new {
-  from { transform: translateY(-0.75em); opacity: 0.15; }
-  to   { transform: translateY(0); opacity: 1; }
-}
+.digit-col .digit-old, .digit-col .digit-new { will-change: transform; backface-visibility: hidden; }
+.digit-col .digit-old { position: relative; animation: digit-old 0.34s cubic-bezier(0.5, 0, 0.15, 1) forwards; }
+.digit-col .digit-new { animation: digit-new 0.34s cubic-bezier(0.5, 0, 0.15, 1) both; }
+/* pure slide, no fade: the old digit rolls out the bottom while the new one rolls in from the top */
+@keyframes digit-old { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, 105%, 0); } }
+@keyframes digit-new { from { transform: translate3d(0, -105%, 0); } to { transform: translate3d(0, 0, 0); } }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg].digit-hide { -webkit-text-fill-color: transparent; }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after { -webkit-text-fill-color: currentcolor; }
 
