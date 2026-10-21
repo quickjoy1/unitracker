@@ -2049,23 +2049,21 @@ svg.lucide {
 
 /* ══ Clock animations (full screen + floating windows) ═══════════════════ */
 .timer-holder .digit-ghost-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: visible; }
-.digit-ghost {
-  position: absolute;
-  white-space: nowrap;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  animation: digit-out 0.42s cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+.digit-clip { position: absolute; overflow: hidden; display: flex; justify-content: center; letter-spacing: -0.02em; box-sizing: border-box; line-height: 1; white-space: nowrap; }
+.digit-col { position: relative; display: block; flex: none; width: 1ch; text-align: center; font-variant-numeric: tabular-nums; }
+.digit-col .digit-old, .digit-col .digit-new { display: block; }
+.digit-col .digit-new { position: absolute; left: 0; right: 0; bottom: 0; }
+.digit-col .digit-old { position: relative; animation: digit-old 0.28s cubic-bezier(0.25, 0.8, 0.3, 1) forwards; }
+.digit-col .digit-new { animation: digit-new 0.28s cubic-bezier(0.25, 0.8, 0.3, 1) both; }
+@keyframes digit-old {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(0.75em); opacity: 0; }
 }
-@keyframes digit-out {
-  from { opacity: 0.9; transform: translateY(0); filter: blur(0); }
-  to   { opacity: 0;   transform: translateY(-0.4em); filter: blur(3px); }
+@keyframes digit-new {
+  from { transform: translateY(-0.75em); opacity: 0.15; }
+  to   { transform: translateY(0); opacity: 1; }
 }
-@keyframes digit-in {
-  from { -webkit-text-fill-color: rgba(255, 255, 255, 0.12); }
-  to   { -webkit-text-fill-color: currentcolor; }
-}
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg].digit-tick { animation: digit-in 0.45s ease-out; }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg].digit-hide { -webkit-text-fill-color: transparent; }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after { -webkit-text-fill-color: currentcolor; }
 
 /* colon dots breathe while running */
@@ -2091,5 +2089,5 @@ svg.lucide {
 .pip-slot-host .timer-adjust-btn { display: inline-flex; padding: 0.25rem 0.6rem; font-size: 0.72rem; }
 
 @media (prefers-reduced-motion: reduce) {
-  .digit-ghost, .timer-panel-fs, :is(.timer-panel-fs, .pip-slot-host) [role="timer"] * { animation: none !important; }
+  .digit-clip *, .timer-panel-fs, :is(.timer-panel-fs, .pip-slot-host) [role="timer"] * { animation: none !important; }
 }

@@ -1,6 +1,6 @@
 /**
  * Clock animation for the full-screen / floating clock face.
- * When a digit changes, the old digit slides up and fades out (a ghost copy) while the new one fades in.
+ * When a digit changes, the old digit slides down and fades while the new one drops in from above (clipped to the digit box).
  * It only watches the DOM, so the timer components don't need to know about it.
  */
 const SCOPE = ".timer-panel-fs, .pip-slot-host";
@@ -17,6 +17,7 @@ export function attachDigitRoll(holder: HTMLElement): () => void {
 
   const spawn = (seg: HTMLElement, oldText: string) => {
     const doc = seg.ownerDocument;
+    const now = (seg.textContent ?? "").trim();
     let layer = holder.querySelector(":scope > .digit-ghost-layer") as HTMLElement | null;
     if (!layer) {
       layer = doc.createElement("div");
@@ -26,21 +27,36 @@ export function attachDigitRoll(holder: HTMLElement): () => void {
     const hostRect = holder.getBoundingClientRect();
     const rect = seg.getBoundingClientRect();
     const cs = (doc.defaultView ?? window).getComputedStyle(seg);
-    const ghost = doc.createElement("div");
-    ghost.className = "digit-ghost";
-    ghost.textContent = oldText;
-    ghost.style.cssText =
-      `left:${rect.left - hostRect.left}px;top:${rect.top - hostRect.top}px;width:${rect.width}px;` +
-      `font-size:${cs.fontSize};font-family:${cs.fontFamily};font-weight:${cs.fontWeight};color:${cs.color};line-height:1;`;
-    layer.appendChild(ghost);
-    ghost.addEventListener("animationend", () => ghost.remove(), { once: true });
-    window.setTimeout(() => ghost.remove(), 800); // safety net
-
-    // new digit fades in
-    seg.classList.remove("digit-tick");
-    void seg.offsetWidth;
-    seg.classList.add("digit-tick");
-    seg.addEventListener("animationend", () => seg.classList.remove("digit-tick"), { once: true });
+    const fs = parseFloat(cs.fontSize) || 48;
+    const lift = fs * 0.7;
+    const box = doc.createElement("div");
+    box.className = "digit-clip";
+    box.style.cssText =
+      `left:${rect.left - hostRect.left}px;top:${rect.top - hostRect.top - lift}px;` +
+      `width:${rect.width}px;height:${rect.height + lift}px;padding-top:${lift}px;` +
+      `font-size:${cs.fontSize};font-family:${cs.fontFamily};font-weight:${cs.fontWeight};color:${cs.color};`;
+    const n = Math.max(now.length, oldText.length);
+    for (let i = 0; i < n; i++) {
+      const o = oldText[i] ?? "", c = now[i] ?? "";
+      const col = doc.createElement("span");
+      col.className = "digit-col";
+      if (o === c) {
+        col.textContent = c;
+      } else {
+        const out = doc.createElement("span");
+        out.className = "digit-old";
+        out.textContent = o;
+        const inn = doc.createElement("span");
+        inn.className = "digit-new";
+        inn.textContent = c;
+        col.append(out, inn);
+      }
+      box.appendChild(col);
+    }
+    layer.appendChild(box);
+    seg.classList.add("digit-hide");
+    const done = () => { box.remove(); seg.classList.remove("digit-hide"); };
+    window.setTimeout(done, 300);
   };
 
   const observer = new MutationObserver((mutations) => {
