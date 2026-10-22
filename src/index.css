@@ -2033,3 +2033,21 @@ svg.lucide {
   font-size: calc(var(--td-size) * 0.86) !important; line-height: 1.05; font-weight: 500; color: #fff !important; opacity: 0.3;
   padding: 0 0.08em; transform: translateY(-0.09em);
 }
+
+/* ══ Floating window: only the time on pure black; pause / resume appears on hover ═════ */
+html:has(.pip-body), .pip-body { background: #000 !important; }
+.pip-body .pip-slot-label,
+.pip-body .td-pill,
+.pip-body .td-caption,
+.pip-body .timer-adjust-btn,
+.pip-body .timer-ctrl-btn:not(.timer-ctrl-btn-primary):not(.timer-ctrl-btn-pomo):not(.timer-ctrl-btn-countdown) { display: none !important; }
+.pip-single .pip-slot-host { --td-size: clamp(2.8rem, min(21vw, 38vh), 9rem); }
+.pip-body .timer-panel-label { display: none; }
+.pip-body :is(.timer-ctrl-btn-primary, .timer-ctrl-btn-pomo, .timer-ctrl-btn-countdown) {
+  position: fixed !important; left: 50% !important; bottom: 0.9rem !important; margin: 0 0 0 -1.35rem !important;
+  width: 2.7rem !important; height: 2.7rem !important; padding: 0 !important; justify-content: center;
+  opacity: 0; transition: opacity 0.18s ease; z-index: 5;
+}
+.pip-body:hover :is(.timer-ctrl-btn-primary, .timer-ctrl-btn-pomo, .timer-ctrl-btn-countdown),
+.pip-body :is(.timer-ctrl-btn-primary, .timer-ctrl-btn-pomo, .timer-ctrl-btn-countdown):focus-visible { opacity: 1; }
+@media (hover: none) { .pip-body :is(.timer-ctrl-btn-primary, .timer-ctrl-btn-pomo, .timer-ctrl-btn-countdown) { opacity: 1; } }
