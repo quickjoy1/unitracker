@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { openFloatWindow, type FloatHandle } from "@/utils/floatWindow";
-import { attachDigitRoll } from "@/utils/digitRoll";
 import { motion } from "framer-motion";
 
 import Countdown from "./Countdown";
@@ -79,7 +78,6 @@ const UnifiedTimer = ({ isSynced, isRunning }: { isSynced?: boolean; isRunning?:
       holder = document.createElement("div");
       holder.className = "timer-holder flex-1 min-h-0 flex flex-col";
       holder.style.position = "relative";
-      disposers.current.push(attachDigitRoll(holder));
       holders.current[id] = holder;
     }
     return holder;

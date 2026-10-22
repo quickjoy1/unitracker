@@ -1,4 +1,5 @@
 import { Check, Clock, Flag, MoreVertical, Pause, Play, RotateCcw, X } from "lucide-react";
+import ClockDigits, { formatClock } from "@/components/ClockDigits";
 import { SYNC_EVENTS, useEmitSyncEvents } from "@/hooks/study-timer/useStudySync";
 import { useStudyTimer } from "@/hooks/useTimers";
 import { useAppStore, useSessionSyncSettings } from "@/store/appStore";
@@ -1099,6 +1100,7 @@ const StudyTimer = ({
 
       {/* Timer display - circular progress ring */}
       <div className="w-full flex-1 flex flex-col items-center justify-center py-2" role="timer" aria-label="Current session time" data-state={studyState.sessionStatus === "paused" ? "paused" : isStudyRunningRedux ? "running" : "idle"}>
+        <ClockDigits text={formatClock(safeNumber(studyState.time))} state={studyState.sessionStatus === "paused" ? "paused" : isStudyRunningRedux ? "running" : "idle"} />
         <div className="relative group">
         {(() => {
           const totalSec = safeNumber(studyState.time);

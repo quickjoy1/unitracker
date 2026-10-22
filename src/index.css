@@ -1872,13 +1872,9 @@ svg.lucide {
   padding: 1.25rem 1.5rem 2rem;
   background: #000 !important;
   overflow: hidden;
-  --clock-size: clamp(4.5rem, min(17vw, 34vh), 22rem);
-  --label-size: clamp(0.8rem, 1.3vw, 1.1rem);
+  --td-size: clamp(5rem, min(22vw, 32vh), 18rem);
 }
-.pip-slot-host {
-  --clock-size: clamp(1.8rem, 5.2vw, 3rem);
-  --label-size: 0.5rem;
-}
+.pip-slot-host { --td-size: clamp(2.2rem, 11vw, 3.6rem); }
 .pip-body { background-color: #000; }
 .pip-slot-label,
 .pip-slot-label-pomodoro,
@@ -1907,7 +1903,7 @@ svg.lucide {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--clock-size) * 0.12);
+  gap: calc(var(--td-size) * 0.12);
 }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] svg[viewBox="0 0 120 120"] { display: none; }
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] .w-32 { width: 100% !important; height: auto !important; }
@@ -1915,103 +1911,73 @@ svg.lucide {
 :is(.timer-panel-fs, .pip-slot-host) [role="timer"] .flex.items-center.gap-0\.5 {
   align-items: flex-start;
   justify-content: center;
-  gap: calc(var(--clock-size) * 0.14);
+  gap: calc(var(--td-size) * 0.14);
 }
 
-/* digits */
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] :is(span.font-mono[data-seg], input[data-seg]) {
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif !important;
-  font-size: var(--clock-size) !important;
-  font-weight: 400 !important;
-  line-height: 1 !important;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em !important;
-  color: #fff !important;
-  text-shadow: none;
-  min-width: calc(var(--clock-size) * 1.5);
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  background: transparent;
-}
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="idle"] :is(span.font-mono[data-seg], input[data-seg]) { color: #4d4d4d !important; }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] input[data-seg]:focus { color: #fff !important; }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] input[data-seg] { width: calc(var(--clock-size) * 1.5) !important; }
+/* digits: studiestimer.com style (.td-*) */
+.clock-only { display: none; }
+:is(.timer-panel-fs, .pip-slot-host) .clock-only { display: flex; flex-direction: column; align-items: center; gap: calc(var(--td-size) * 0.18); }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] svg[viewBox="0 0 120 120"],
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] .relative.group,
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] .w-32 > .absolute.inset-0 { display: none !important; }
+/* countdown while idle shows its editable inputs instead of the clock */
+.timer-panel-fs-countdown [role="timer"][data-state="idle"] .clock-only,
+.pip-slot-host [role="timer"][aria-label="Current countdown time"][data-state="idle"] .clock-only { display: none; }
+.timer-panel-fs-countdown [role="timer"][data-state="idle"] .w-32 > .absolute.inset-0,
+.pip-slot-host [role="timer"][aria-label="Current countdown time"][data-state="idle"] .w-32 > .absolute.inset-0 { display: flex !important; }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="idle"] .clock-only .td-group { opacity: 0.45; }
 
-/* label + line under each segment */
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after,
-:is(.timer-panel-fs, .pip-slot-host) .timer-seg-label {
-  display: block;
-  width: 100%;
-  margin-top: calc(var(--clock-size) * 0.16);
-  padding-top: calc(var(--clock-size) * 0.1);
-  border-top: 1px solid #333;
-  font-family: Inter, system-ui, sans-serif;
-  font-size: var(--label-size);
-  font-weight: 400;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  text-align: center;
-  color: #8a8a8a;
-  text-shadow: none;
+.td-group {
+  display: inline-flex; align-items: baseline;
+  font-size: var(--td-size);
+  line-height: 1;
+  font-family: "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size-adjust: from-font;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.035em;
+  color: #fff;
+  user-select: none;
 }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after { content: attr(data-seg); }
-:is(.timer-panel-fs, .pip-slot-host) .timer-seg-label { min-width: calc(var(--clock-size) * 1.5); }
-
-/* ":" becomes two dots */
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono:not([data-seg]) {
-  font-size: 0 !important;
-  position: relative;
-  width: calc(var(--clock-size) * 0.3);
-  height: var(--clock-size);
-  flex: none;
+.td-cell { position: relative; overflow: hidden; display: inline-block; }
+.td-glyph { display: inline-block; }
+.td-enter { animation: td-in 0.24s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.td-exit { position: absolute; top: 0; left: 0; width: 100%; animation: td-out 0.18s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.td-colon { display: inline-block; padding: 0 0.1em; transform: translateY(-0.09em); opacity: 0.5; }
+.td-colon-running { animation: td-blink 2s ease-in-out infinite; }
+@keyframes td-in { 0% { transform: translateY(-0.3em); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes td-out { 0% { transform: translateY(0); opacity: 1; } to { transform: translateY(0.3em); opacity: 0; } }
+@keyframes td-blink { 0%, to { opacity: 0.3; } 50% { opacity: 0.65; } }
+@keyframes td-fade-in { 0% { opacity: 0; } to { opacity: 1; } }
+@keyframes td-fade-out { 0% { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .td-enter { animation: td-fade-in 0.15s ease both; }
+  .td-exit { animation: td-fade-out 0.12s ease both; }
+  .td-colon-running { animation: none; opacity: 0.5; }
 }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono:not([data-seg])::before,
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono:not([data-seg])::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  width: calc(var(--clock-size) * 0.12);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: #4a4a4a;
-  transform: translateX(-50%);
-}
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono:not([data-seg])::before { top: 26%; }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono:not([data-seg])::after { top: 62%; }
-
-/* mode name (Focus / Break) */
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span:not(.font-mono):not(.timer-seg-label) {
-  font-size: var(--label-size) !important;
-  letter-spacing: 0.3em;
-  color: #8a8a8a;
+.td-caption { font-size: calc(var(--td-size) * 0.14); letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+.td-pill {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.02);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.75rem; font-weight: 500; line-height: 1rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
-/* status pill */
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"]::after {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.4em 1.1em 0.4em 2.1em;
-  border-radius: 999px;
-  border: 1px solid #1f1f1f;
-  white-space: nowrap;
-  font-size: calc(var(--label-size) * 1.1);
-  font-weight: 600;
-  color: #d4d4d4;
-  background: radial-gradient(circle at 1.05em 50%, var(--dot, #555) 0.28em, transparent 0.32em), #0d0d0d;
+/* countdown idle: editable inputs */
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] input[data-seg] {
+  width: 2.4ch; background: transparent; border: 0; border-bottom: 2px solid rgba(255,255,255,0.12);
+  border-radius: 0; text-align: center; color: #fff; padding: 0 0 0.12em; outline: none;
+  font-family: "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: calc(var(--td-size) * 0.86) !important; font-weight: 500; line-height: 1.05; letter-spacing: -0.035em;
 }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"]::after { content: "In progress"; --dot: #22c55e; }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="paused"]::after { content: "Paused"; --dot: #f59e0b; }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="idle"]::after { display: none; }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] input[data-seg]:focus { border-bottom-color: rgba(255,255,255,0.85); }
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] .timer-seg-label { display: block; text-align: center; margin-top: 0.4rem; font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
 .timer-panel-fs-countdown [role="timer"][data-state="idle"]::before {
-  content: "SET DURATION";
-  align-self: center;
-  font-size: var(--label-size);
-  letter-spacing: 0.4em;
-  white-space: nowrap;
-  color: #8a8a8a;
+  content: "SET DURATION"; align-self: center; font-size: 0.8rem; letter-spacing: 0.4em; white-space: nowrap; color: rgba(255,255,255,0.4);
 }
 
 /* buttons */
@@ -2047,43 +2013,23 @@ svg.lucide {
 .pip-slot-host .timer-ctrl-btn { padding: 0.45rem 0.7rem; }
 .pip-slot-host [role="timer"] .timer-ctrl-btn { position: absolute !important; left: 0 !important; top: 0 !important; right: auto !important; bottom: auto !important; margin: 0 !important; }
 
-/* ══ Clock animations (full screen + floating windows) ═══════════════════ */
-.timer-holder .digit-ghost-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: visible; }
-.digit-clip { position: absolute; overflow: hidden; display: flex; justify-content: center; letter-spacing: -0.02em; box-sizing: border-box; line-height: 1; white-space: nowrap; }
-.digit-col { position: relative; display: block; flex: none; width: 1ch; text-align: center; font-variant-numeric: tabular-nums; }
-.digit-col .digit-old, .digit-col .digit-new { display: block; }
-.digit-col .digit-new { position: absolute; left: 0; right: 0; bottom: 0; }
-.digit-col .digit-old, .digit-col .digit-new { will-change: transform; backface-visibility: hidden; }
-.digit-col .digit-old { position: relative; animation: digit-old 0.16s cubic-bezier(0.3, 0, 0.3, 1) forwards; }
-.digit-col .digit-new { animation: digit-new 0.16s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
-/* only the changing digit moves: old drops 15% and goes very faint, new comes from 10% above, faint, and brightens */
-@keyframes digit-old { 0% { transform: translate3d(0, 0, 0); opacity: 0.55; } 100% { transform: translate3d(0, 15%, 0); opacity: 0.04; } }
-@keyframes digit-new { 0% { transform: translate3d(0, -10%, 0); opacity: 0.08; } 100% { transform: translate3d(0, 0, 0); opacity: 1; } }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg].digit-hide { -webkit-text-fill-color: transparent; }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono[data-seg]::after { -webkit-text-fill-color: currentcolor; }
-
-/* colon dots breathe while running */
-@keyframes dot-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"] span.font-mono:not([data-seg])::before,
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"] span.font-mono:not([data-seg])::after {
-  animation: dot-breathe 1s ease-in-out infinite;
-}
-/* "In progress" pill glows softly */
-@keyframes pill-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-  50% { box-shadow: 0 0 18px 2px rgba(34, 197, 94, 0.22); }
-}
-:is(.timer-panel-fs, .pip-slot-host) [role="timer"][data-state="running"]::after { animation: pill-glow 2.4s ease-in-out infinite; }
+/* ══ Clock extras ═══════ */
 /* full screen opens with a soft zoom; buttons press in */
 @keyframes fs-in { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
 .timer-panel-fs { animation: fs-in 0.28s ease-out; }
 :is(.timer-panel-fs, .pip-slot-host) :is(.timer-ctrl-btn, .timer-adjust-btn):active { transform: scale(0.96) !important; }
 
 /* floating windows hold a single timer: give it more room */
-.pip-single .pip-slot-host { --clock-size: clamp(2.6rem, 14vw, 5.6rem); --label-size: 0.62rem; }
+.pip-single .pip-slot-host { --td-size: clamp(2.8rem, 16vw, 6rem); }
 .pip-single .pip-timer-stack { padding: 0.75rem; }
 .pip-slot-host .timer-adjust-btn { display: inline-flex; padding: 0.25rem 0.6rem; font-size: 0.72rem; }
 
 @media (prefers-reduced-motion: reduce) {
-  .digit-clip *, .timer-panel-fs, :is(.timer-panel-fs, .pip-slot-host) [role="timer"] * { animation: none !important; }
+  .timer-panel-fs { animation: none; }
+}
+
+/* countdown idle: colon between the inputs */
+:is(.timer-panel-fs, .pip-slot-host) [role="timer"] span.font-mono:not([data-seg]) {
+  font-size: calc(var(--td-size) * 0.86) !important; line-height: 1.05; font-weight: 500; color: #fff !important; opacity: 0.3;
+  padding: 0 0.08em; transform: translateY(-0.09em);
 }

@@ -1,4 +1,5 @@
 import { Bell, BellOff, Pause, Play, RefreshCw, RefreshCwOff, RotateCcw } from 'lucide-react';
+import ClockDigits, { formatClock } from "@/components/ClockDigits";
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import SectionTitle from '@/components/SectionTitle';
@@ -808,6 +809,7 @@ const Countdown: React.FC<CountdownProps> = ({
 
       {/* Timer display - circular ring when running or paused, editable inputs when stopped */}
       <div className="flex-1 flex items-center justify-center py-2" role="timer" aria-label="Current countdown time" data-state={isCountdownRunning ? "running" : pausedSecondsLeft !== null ? "paused" : "idle"}>
+        <ClockDigits text={formatClock(isCountdownRunning ? secondsLeft : pausedSecondsLeft ?? 0)} state={isCountdownRunning ? "running" : pausedSecondsLeft !== null ? "paused" : "idle"} />
         {isCountdownRunning || pausedSecondsLeft !== null ? (
           (() => {
             const isPaused = !isCountdownRunning && pausedSecondsLeft !== null;

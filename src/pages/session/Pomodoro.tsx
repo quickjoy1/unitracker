@@ -1,4 +1,5 @@
 import { Bell, BellOff, MoreVertical, Pause, Play, RefreshCw, RefreshCwOff, RotateCcw } from 'lucide-react';
+import ClockDigits, { formatClock } from "@/components/ClockDigits";
 // Pomodoro.tsx - Refactored
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStore, usePomodoroModes, useUiActions } from '@/store/appStore';
@@ -1298,6 +1299,7 @@ const Pomodoro: React.FC<PomodoroProps> = ({ hideHeader = false }) => {
 
       {/* Timer Display - circular progress ring */}
       <div className="relative w-full flex-1 flex flex-col items-center justify-center py-2" role="timer" aria-label="Current pomodoro time" data-state={isPomodoroRunning ? "running" : pomoState.manuallyPaused ? "paused" : "idle"}>
+        <ClockDigits text={formatClock(Math.round(pomoState.timeLeft))} state={isPomodoroRunning ? "running" : pomoState.manuallyPaused ? "paused" : "idle"} caption={pomoState.currentMode === 'work' ? 'Focus' : pomoState.currentMode === 'break' ? 'Break' : 'Long Break'} />
         {(() => {
           const roundedSeconds = Math.round(pomoState.timeLeft);
           const mins = Math.floor(roundedSeconds / 60);
