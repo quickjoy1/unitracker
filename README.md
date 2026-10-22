@@ -13,7 +13,7 @@ This fork is made to **run locally with no account, no keys and no hosting**.
 - **Floating windows are just the time.** Pure black, no buttons; a pause/resume button fades in when you hover the window.
 - **Separate floating window per timer.** Every timer has its own *Float this timer* button. A running timer keeps running when it moves into the window and when it is docked back. Browsers allow only one always-on-top (Picture-in-Picture) window at a time, so the first timer you float gets that; others open as small normal pop-up windows (allow pop-ups for the site).
 - **Clock animations.** The full-screen clock and floating windows use the same digits, drop-in/drop-out animation and "In progress" pill as studiestimer.com (copied from its CSS). Only the digit that changes moves; the colon blinks while running. Reduced-motion users get a plain fade.
-- **Study a task.** In the Study timer, the *Start Session* dialog has a "Study a task" picker listing your open tasks (overdue first, then upcoming). Pick one and the title fills in; when you start, the task moves to In Progress and the study time is saved against it.
+- **Study a task.** The Study timer's start window has an "Unfinished Tasks" tab listing all your open tasks (overdue first). Tap play on one and the timer starts right away, the task moves to In Progress and the study time is saved against it. You can also type a session title and press Start. No second window.
 - **Study time by task.** The Analytics page has a *Study time by task* card with today, last 7 days and all-time totals per task.
 - **Backup restore works.** Restore now saves workspaces, tasks and sessions, then reloads the page. Before, it only showed a success message.
 

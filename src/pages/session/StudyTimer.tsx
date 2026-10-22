@@ -2,7 +2,7 @@ import { Check, Clock, Flag, MoreVertical, Pause, Play, RotateCcw, X } from "luc
 import ClockDigits, { formatClock } from "@/components/ClockDigits";
 import { SYNC_EVENTS, useEmitSyncEvents } from "@/hooks/study-timer/useStudySync";
 import { useStudyTimer } from "@/hooks/useTimers";
-import { useAppStore, useSessionSyncSettings } from "@/store/appStore";
+import { useAppStore, useSessionSyncSettings, useUpdateTaskSuccess } from "@/store/appStore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DeleteSessionModal from "@/modals/DeleteSessionModal";
 import EditSessionModal from "@/modals/EditSessionModal";
@@ -12,7 +12,6 @@ import LoginPromptModal from "@/modals/LoginPromptModal";
 import SectionTitle from "@/components/SectionTitle";
 import SessionSummaryModal from "@/modals/SessionSummaryModal";
 import SessionsModal from "@/modals/TodaysSessionsModal";
-import StartSessionModal from "@/modals/StartSessionModal";
 import { supabase } from "@/utils/supabaseClient";
 import { toast } from "react-toastify";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +20,7 @@ import { useSessionId } from "@/hooks/study-timer/useSessionId";
 import { useStudyTimerState, type StudyState } from "@/hooks/study-timer/useStudyTimerState";
 import type { PauseEntry } from "@/schemas/timer";
 import { getLocalDateString } from "@/utils/dateUtils";
-import { StudyService, type SessionLap } from "@/services/StudyService";
+import { StudyService, SessionTaskService, type SessionLap } from "@/services/StudyService";
 import { TaskService } from "@/services/TaskService";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -1011,10 +1010,52 @@ const StudyTimer = ({
       toast.error("Error starting session");
     }
   }, [updateSessionId, updateModal, start]);
-  const handleStartNewSession = useCallback(() => {
+  // Start a session straight from the sessions window: for one of your tasks, or just a title
+  const updateTaskSuccess = useUpdateTaskSuccess();
+  const startFromList = useCallback(async (title: string, task?: any) => {
     updateModal("isSessionsModalOpen", false);
-    updateModal("isStartModalOpen", true);
-  }, [updateModal]);
+    if (currentSessionId) {
+      toast.info("Finish or exit the current session first.");
+      return;
+    }
+    try {
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError || !data?.user) throw userError || new Error("User not authenticated");
+      const nextSessionNumber = await StudyService.getNextSessionNumber();
+      const session = await StudyService.createLap({
+        user_id: data.user.id,
+        started_at: new Date().toISOString(),
+        duration: "00:00:00",
+        tasks_completed: 0,
+        name: title,
+        description: "",
+        session_number: nextSessionNumber,
+        created_at: new Date().toISOString(),
+        session_assignment: task?.assignment || null,
+        workspace_id: task?.workspace_id || null,
+      });
+      try {
+        localStorage.setItem("pomodorosThisSession", "0");
+        localStorage.setItem("activeSessionId", session.id);
+        localStorage.removeItem("lastPomoNotifyTs");
+      } catch {}
+      if (task) {
+        // Link the session to the task so the study time counts for it, and mark it in progress
+        await SessionTaskService.addTaskToSession(session.id, task.id).catch((e) => console.warn("[StudyTimer] Could not link task:", e));
+        if (task.status !== "in_progress") {
+          updateTaskSuccess({ ...task, status: "in_progress", activetask: true, completed: false, completed_at: null });
+          await supabase.from("tasks").update({ status: "in_progress", activetask: true }).eq("id", task.id);
+        }
+      }
+      await handleStartSession({ sessionId: session.id, title });
+      window.dispatchEvent(new CustomEvent("refreshStats"));
+    } catch (e) {
+      console.error("[StudyTimer] Error starting session:", e);
+      toast.error("Could not start the session.");
+    }
+  }, [currentSessionId, handleStartSession, updateModal, updateTaskSuccess]);
+  const handleStartTask = useCallback((task: any) => startFromList(task.title, task), [startFromList]);
+  const handleStartCustom = useCallback((title: string) => startFromList(title), [startFromList]);
   const handleFinishAllSessions = useCallback(async () => {
     try {
       await StudyService.finishAllUnfinishedSessions();
@@ -1340,8 +1381,7 @@ const StudyTimer = ({
       </div>
 
       {/* Modals */}
-      <SessionsModal isOpen={modalStates.isSessionsModalOpen} onClose={() => updateModal("isSessionsModalOpen", false)} onSessionSelected={handleSessionSelected} onFinishAllSessions={handleFinishAllSessions} onStartNewSession={handleStartNewSession} />
-      <StartSessionModal isOpen={modalStates.isStartModalOpen} onClose={() => updateModal("isStartModalOpen", false)} onStart={handleStartSession} />
+      <SessionsModal isOpen={modalStates.isSessionsModalOpen} onClose={() => updateModal("isSessionsModalOpen", false)} onSessionSelected={handleSessionSelected} onFinishAllSessions={handleFinishAllSessions} onStartTask={handleStartTask} onStartCustom={handleStartCustom} />
 
       {currentSessionId && <FinishSessionModal isOpen={modalStates.isFinishModalOpen} onClose={() => updateModal("isFinishModalOpen", false)} onFinish={handleFinishSession} sessionId={currentSessionId} onSessionDetailsUpdated={fetchCurrentSessionDetails} />}
 

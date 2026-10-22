@@ -1,4 +1,7 @@
 import { AlertCircle, Calendar, Check, CheckCircle, Clock, Play, Trash2, TrendingUp, X } from 'lucide-react';
+import { useMemo } from 'react';
+import { useTasksOnly } from '@/store/appStore';
+import { formatDue, parseDeadline } from '@/utils/reminderEngine';
 import { formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 
@@ -24,7 +27,8 @@ interface SessionsModalProps {
   onSessionSelected: (sessionId: string) => void;
   onSessionResumed?: (sessionId: string) => void;
   onFinishAllSessions?: () => Promise<void>;
-  onStartNewSession?: () => void;
+  onStartTask?: (task: any) => void;
+  onStartCustom?: (title: string) => void;
 }
 type TabType = 'unfinished' | 'today';
 const SessionsModal = ({
@@ -33,8 +37,15 @@ const SessionsModal = ({
   onSessionSelected,
   onSessionResumed,
   onFinishAllSessions,
-  onStartNewSession
+  onStartTask,
+  onStartCustom
 }: SessionsModalProps) => {
+  const allTasks = useTasksOnly();
+  const [newTitle, setNewTitle] = useState('');
+  const openTasks = useMemo(() => allTasks
+    .filter((t: any) => !t.completed && t.status !== 'completed')
+    .map((t: any) => ({ t, due: parseDeadline(t.deadline) }))
+    .sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity)), [allTasks]);
   const [activeTab, setActiveTab] = useState<TabType>('unfinished');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [unfinishedSessions, setUnfinishedSessions] = useState<Session[]>([]);
@@ -122,7 +133,6 @@ const SessionsModal = ({
     return Number.isNaN(d.getTime()) ? null : d;
   };
   const currentSessions = activeTab === 'unfinished' ? unfinishedSessions : sessions;
-  const hasUnfinished = unfinishedSessions.length > 0;
   const hasToday = sessions.length > 0;
   if (!isOpen) return null;
   return <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -136,9 +146,9 @@ const SessionsModal = ({
           <button onClick={() => setActiveTab('unfinished')} className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'unfinished' ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
             <div className="flex items-center justify-center gap-2">
               <AlertCircle size={16} />
-              Unfinished
-              {hasUnfinished && <span className="bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] px-2 py-0.5 rounded-full text-xs">
-                  {unfinishedSessions.length}
+              Unfinished Tasks
+              {(openTasks.length + unfinishedSessions.length) > 0 && <span className="bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] px-2 py-0.5 rounded-full text-xs">
+                  {openTasks.length + unfinishedSessions.length}
                 </span>}
             </div>
           </button>
@@ -154,12 +164,26 @@ const SessionsModal = ({
         </div>
 
         <div className="p-4 space-y-4">
+  {activeTab === 'unfinished' && !loading && openTasks.length > 0 && <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Your tasks: tap play to start studying</div>
+      {openTasks.map(({ t, due }) => <div key={t.id} className="flex items-center gap-3 bg-[var(--bg-secondary)] rounded-lg px-3 py-2.5 border-2 border-[var(--border-primary)] hover:border-[var(--accent-primary)]/50 transition-colors">
+          <button onClick={() => onStartTask?.(t)} className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white transition-colors" aria-label={`Study ${t.title}`} title="Start studying this task">
+            <Play size={14} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-[var(--text-primary)] truncate">{t.title}</div>
+            {(t as any).assignment && <div className="text-xs text-[var(--text-secondary)] truncate">{(t as any).assignment}</div>}
+          </div>
+          {due !== null && <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${due < Date.now() ? 'text-red-500 border-red-500/30 bg-red-500/10' : 'text-[var(--text-secondary)] border-[var(--border-primary)]'}`}>{formatDue(due, Date.now())}</span>}
+        </div>)}
+      {unfinishedSessions.length > 0 && <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pt-2">Unfinished sessions</div>}
+    </div>}
   {loading ? <div className="flex justify-center py-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-primary)]"></div>
-    </div> : currentSessions.length === 0 ? <div className="text-center py-8 text-[var(--text-secondary)]">
+    </div> : currentSessions.length === 0 ? (activeTab === 'unfinished' && openTasks.length > 0) ? null : <div className="text-center py-8 text-[var(--text-secondary)]">
       {activeTab === 'unfinished' ? <>
           <AlertCircle size={48} className="mx-auto mb-2 opacity-50" />
-          <p>No unfinished sessions</p>
+          <p>No unfinished tasks</p>
           <p className="text-sm mt-1">All caught up! Great job! 🎉</p>
         </> : <>
           <Calendar size={48} className="mx-auto mb-2 opacity-50" />
@@ -253,15 +277,12 @@ const SessionsModal = ({
             <button onClick={onClose} className="px-4 py-2 rounded-lg border-2 border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] transition-colors">
               Cancel
             </button>
-            <button onClick={() => {
-            // Close current modal and open StartSessionModal
-            onClose();
-            if (onStartNewSession) {
-              onStartNewSession();
-            }
-          }} className="px-4 py-2 rounded-lg border-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors">
-              Start New Session
-            </button>
+            <form className="flex gap-2" onSubmit={e => { e.preventDefault(); const v = newTitle.trim(); if (v) { setNewTitle(''); onStartCustom?.(v); } }}>
+              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Or type a session title" className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)] w-48" aria-label="New session title" />
+              <button type="submit" disabled={!newTitle.trim()} className="px-4 py-2 rounded-lg border-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                Start
+              </button>
+            </form>
           </div>
         </div>
         
