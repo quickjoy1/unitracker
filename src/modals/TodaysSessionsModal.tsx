@@ -42,10 +42,17 @@ const SessionsModal = ({
 }: SessionsModalProps) => {
   const allTasks = useTasksOnly();
   const [newTitle, setNewTitle] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const openTasks = useMemo(() => allTasks
     .filter((t: any) => !t.completed && t.status !== 'completed')
     .map((t: any) => ({ t, due: parseDeadline(t.deadline) }))
     .sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity)), [allTasks]);
+  const selectedTask = openTasks.find(r => r.t.id === selectedId)?.t;
+  const startSelected = () => {
+    if (selectedTask) { setSelectedId(null); onStartTask?.(selectedTask); return; }
+    const v = newTitle.trim();
+    if (v) { setNewTitle(''); onStartCustom?.(v); }
+  };
   const [activeTab, setActiveTab] = useState<TabType>('unfinished');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [unfinishedSessions, setUnfinishedSessions] = useState<Session[]>([]);
@@ -165,17 +172,18 @@ const SessionsModal = ({
 
         <div className="p-4 space-y-4">
   {activeTab === 'unfinished' && !loading && openTasks.length > 0 && <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Your tasks: tap play to start studying</div>
-      {openTasks.map(({ t, due }) => <div key={t.id} className="flex items-center gap-3 bg-[var(--bg-secondary)] rounded-lg px-3 py-2.5 border-2 border-[var(--border-primary)] hover:border-[var(--accent-primary)]/50 transition-colors">
-          <button onClick={() => onStartTask?.(t)} className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white transition-colors" aria-label={`Study ${t.title}`} title="Start studying this task">
-            <Play size={14} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-[var(--text-primary)] truncate">{t.title}</div>
-            {(t as any).assignment && <div className="text-xs text-[var(--text-secondary)] truncate">{(t as any).assignment}</div>}
-          </div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Pick a task, then press Start</div>
+      {openTasks.map(({ t, due }) => {
+        const on = t.id === selectedId;
+        return <button key={t.id} type="button" onClick={() => { setSelectedId(on ? null : t.id); setNewTitle(''); }} aria-pressed={on} className={`w-full flex items-center gap-3 text-left rounded-lg px-3 py-2.5 border-2 transition-colors ${on ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'bg-[var(--bg-secondary)] border-[var(--border-primary)] hover:border-[var(--accent-primary)]/50'}`}>
+          <span className={`w-4 h-4 shrink-0 rounded-full border-2 flex items-center justify-center ${on ? 'border-[var(--accent-primary)]' : 'border-[var(--text-secondary)]/50'}`}>{on && <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" />}</span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-medium text-[var(--text-primary)] truncate">{t.title}</span>
+            {(t as any).assignment && <span className="block text-xs text-[var(--text-secondary)] truncate">{(t as any).assignment}</span>}
+          </span>
           {due !== null && <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${due < Date.now() ? 'text-red-500 border-red-500/30 bg-red-500/10' : 'text-[var(--text-secondary)] border-[var(--border-primary)]'}`}>{formatDue(due, Date.now())}</span>}
-        </div>)}
+        </button>;
+      })}
       {unfinishedSessions.length > 0 && <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pt-2">Unfinished sessions</div>}
     </div>}
   {loading ? <div className="flex justify-center py-8">
@@ -277,9 +285,9 @@ const SessionsModal = ({
             <button onClick={onClose} className="px-4 py-2 rounded-lg border-2 border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] transition-colors">
               Cancel
             </button>
-            <form className="flex gap-2" onSubmit={e => { e.preventDefault(); const v = newTitle.trim(); if (v) { setNewTitle(''); onStartCustom?.(v); } }}>
-              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Or type a session title" className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)] w-48" aria-label="New session title" />
-              <button type="submit" disabled={!newTitle.trim()} className="px-4 py-2 rounded-lg border-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <form className="flex gap-2" onSubmit={e => { e.preventDefault(); startSelected(); }}>
+              <input value={newTitle} onChange={e => { setNewTitle(e.target.value); setSelectedId(null); }} placeholder="Or type a session title" className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)] w-48" aria-label="New session title" />
+              <button type="submit" disabled={!selectedTask && !newTitle.trim()} className="px-5 py-2 rounded-lg border-2 border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
                 Start
               </button>
             </form>
