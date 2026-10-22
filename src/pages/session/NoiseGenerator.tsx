@@ -13,6 +13,7 @@ import BaseModal from "@/modals/BaseModal";
 import ReactSlider from "react-slider";
 import { motion } from "framer-motion";
 import { useNoise } from "@/utils/NoiseContext";
+import LofiPlayer from "@/pages/session/LofiPlayer";
 
 // -------------------------
 // SoundControl component
@@ -558,6 +559,8 @@ export default function NoiseGenerator() {
           </motion.div>
         ))}
       </motion.div>
+
+      <LofiPlayer />
 
       {/* Settings modal */}
       <NoiseSettingsModal
