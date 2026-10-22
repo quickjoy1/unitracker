@@ -12,6 +12,7 @@ import { useAppStore } from '@/store/appStore';
 import { useAuth } from '@/hooks/useAuth';
 import useTheme from '@/hooks/useTheme';
 
+import { isSupabaseConfigured } from '@/utils/supabaseClient';
 interface SettingsProps {
   isOpen: boolean;
   onClose: () => void;
@@ -174,7 +175,12 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
             {/* Auth Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">Account</h3>
-              {isLoggedIn ? (
+              {!isSupabaseConfigured ? (
+                <div className="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-sm">
+                  <p className="font-medium text-[var(--text-primary)]">Local mode</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">All tasks, notes and habits stay in this browser. No login needed.</p>
+                </div>
+              ) : isLoggedIn ? (
                 <button
                   onClick={handleLogout}
                   className="w-full px-4 py-2 text-red-500 bg-[var(--bg-secondary)] hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2 justify-center"

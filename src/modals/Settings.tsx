@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useChangelog } from "@/hooks/useChangelog";
 import useTheme from "@/hooks/useTheme";
 
+import { isSupabaseConfigured } from '@/utils/supabaseClient';
 interface AccentColor {
   name: string;
   value: string;
@@ -265,17 +266,24 @@ const SettingsContent: React.FC<SettingsContentProps> = ({
                 {/* User info card */}
                 <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-secondary)]">
                   <div className="w-10 h-10 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-white font-semibold text-sm">
-                    {isLoggedIn && user?.email ? user.email[0].toUpperCase() : "?"}
+                    {!isSupabaseConfigured ? "L" : isLoggedIn && user?.email ? user.email[0].toUpperCase() : "?"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-                      {isLoggedIn ? user?.email || "Logged in" : "Not signed in"}
+                      {!isSupabaseConfigured ? "Local User" : isLoggedIn ? user?.email || "Logged in" : "Not signed in"}
                     </p>
                     <p className="text-xs text-[var(--text-secondary)]">
-                      {isLoggedIn ? "Google account" : "Sign in to sync your data"}
+                      {!isSupabaseConfigured ? "Local mode · your data stays in this browser" : isLoggedIn ? "Google account" : "Sign in to sync your data"}
                     </p>
                   </div>
-                  {isLoggedIn ? (
+                  {!isSupabaseConfigured ? (
+                    <button
+                      onClick={() => setShowUserModal(true)}
+                      className="px-3 py-1.5 text-xs font-medium text-[var(--accent-primary)] border-2 border-[var(--accent-primary)]/30 rounded-lg hover:bg-[var(--accent-primary)]/10 transition-colors shrink-0"
+                    >
+                      Edit Profile
+                    </button>
+                  ) : isLoggedIn ? (
                     <button
                       onClick={handleLogout}
                       className="px-3 py-1.5 text-xs font-medium text-red-500 border-2 border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"

@@ -1,7 +1,8 @@
 import { ReactNode, createContext, useContext, useEffect, useState } from 'react';
 
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/utils/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
+import { LOCAL_USER } from '@/utils/localSupabase';
 import { toast } from 'react-toastify';
 
 interface AuthContextType {
@@ -19,9 +20,10 @@ interface AuthProviderProps {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  // Local mode (no Supabase keys): the single local user is signed in from the first render
+  const [user, setUser] = useState<User | null>(isSupabaseConfigured ? null : (LOCAL_USER as unknown as User));
+  const [isLoggedIn, setIsLoggedIn] = useState(!isSupabaseConfigured);
+  const [isAuthLoading, setIsAuthLoading] = useState(isSupabaseConfigured);
 
   useEffect(() => {
     // Get initial session

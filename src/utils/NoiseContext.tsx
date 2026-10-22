@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import { LofiEngine } from "@/utils/LofiEngine";
 
 import {
   ReactNode,
@@ -570,6 +571,23 @@ class OceanWavesNode extends BaseSoundNode {
   }
 }
 
+class LofiSoundNode implements SoundNode {
+  private engine = LofiEngine.getInstance();
+
+  constructor(volume: number) {
+    this.engine.setVolume(volume);
+    this.engine.play().catch(console.warn);
+  }
+
+  setVolume(volume: number): void {
+    this.engine.setVolume(volume);
+  }
+
+  dispose(): void {
+    this.engine.pause();
+  }
+}
+
 // ==================== SOUND CONFIGURATIONS ====================
 const SOUND_CONFIGS: SoundConfig[] = [
   {
@@ -601,6 +619,16 @@ const SOUND_CONFIGS: SoundConfig[] = [
     defaultVolume: 0.8,
     volumeMultiplier: 0.5,
     create: (volume: number) => new OceanWavesNode(volume),
+  },
+  {
+    key: "lofi",
+    label: "Lo-Fi Music",
+    icon: "Music",
+    min: 0,
+    max: 1.0,
+    defaultVolume: 0.7,
+    volumeMultiplier: 1.0,
+    create: (volume: number) => new LofiSoundNode(volume),
   },
 ];
 
@@ -688,6 +716,20 @@ export function NoiseProvider({ children }: { children: ReactNode }) {
       );
     };
   }, [isInitialized, initializeAudio]);
+
+  useEffect(() => {
+    const lofiEngine = LofiEngine.getInstance();
+    return lofiEngine.subscribePlayState((isPlaying) => {
+      setSounds((prev) => {
+        const lofiIdx = prev.findIndex((s) => s.key === "lofi");
+        if (lofiIdx !== -1 && prev[lofiIdx]?.isPlaying !== isPlaying) {
+          return prev.map((s, i) => (i === lofiIdx ? { ...s, isPlaying } : s));
+        }
+        return prev;
+      });
+      SoundStorage.setIsPlaying("lofi", isPlaying);
+    });
+  }, []);
 
   const startSound = useCallback(
     async (index: number): Promise<void> => {

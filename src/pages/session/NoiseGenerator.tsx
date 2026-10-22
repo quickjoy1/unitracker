@@ -2,17 +2,20 @@ import {
   Cloud,
   CloudRain,
   Headphones,
+  Music,
   Pause,
   Play,
   SlidersHorizontal,
   Waves,
 } from "lucide-react";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import BaseModal from "@/modals/BaseModal";
+import LofiOptionsModal from "@/modals/LofiOptionsModal";
 import ReactSlider from "react-slider";
 import { motion } from "framer-motion";
 import { useNoise } from "@/utils/NoiseContext";
+import { LofiEngine, LofiSourceState } from "@/utils/LofiEngine";
 
 // -------------------------
 // SoundControl component
@@ -36,6 +39,8 @@ interface SoundControlProps {
   stop: () => void;
   max: number;
   index: number;
+  sublabel?: string;
+  onOpenOptions?: () => void;
 }
 
 const SOUND_THEMES = {
@@ -75,6 +80,18 @@ const SOUND_THEMES = {
     buttonHover:
       "hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-400",
   },
+  lofi: {
+    iconBg: "bg-purple-500/10",
+    iconText: "text-purple-600 dark:text-purple-400",
+    gradient: "bg-gradient-to-r from-purple-400 to-indigo-600",
+    activeBorder: "border-purple-500/40",
+    activeRing: "ring-purple-500/30",
+    badge: "bg-purple-500/10",
+    badgeText: "text-purple-600 dark:text-purple-400",
+    thumb: "bg-purple-500 focus:ring-purple-500/40",
+    buttonHover:
+      "hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400",
+  },
 };
 
 type SoundTheme = (typeof SOUND_THEMES)[keyof typeof SOUND_THEMES];
@@ -94,63 +111,86 @@ function SoundControl({
   stop,
   max,
   index,
+  sublabel,
+  onOpenOptions,
 }: SoundControlProps) {
   const theme = getSoundTheme(soundKey);
   const percentage = Math.round((volume / max) * 100);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
-      className={`relative rounded-2xl border bg-[var(--bg-primary)] p-4 transition-all duration-300 hover:shadow-lg ${
+      whileHover={{ y: -1 }}
+      className={`relative rounded-xl border bg-[var(--bg-primary)] p-2.5 sm:p-3 transition-all duration-200 hover:shadow-md ${
         isPlaying
-          ? `${theme.activeBorder} shadow-md ring-1 ${theme.activeRing}`
+          ? `${theme.activeBorder} shadow-sm ring-1 ${theme.activeRing}`
           : "border-[var(--border-primary)]"
       }`}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-3.5">
         <motion.div
-          animate={isPlaying ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+          animate={isPlaying ? { scale: [1, 1.05, 1] } : { scale: 1 }}
           transition={{
             repeat: Infinity,
             duration: 3,
             ease: "easeInOut",
             delay: index * 0.15,
           }}
-          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${theme.iconBg}`}
+          className={`relative flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl ${theme.iconBg}`}
         >
-          <Icon size={22} className={theme.iconText} />
+          <Icon size={19} className={theme.iconText} />
           {isPlaying && (
             <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: [0.35, 0], scale: [1, 1.5] }}
+              animate={{ opacity: [0.35, 0], scale: [1, 1.4] }}
               transition={{
                 repeat: Infinity,
                 duration: 3,
                 ease: "easeInOut",
                 delay: index * 0.15,
               }}
-              className={`absolute inset-0 rounded-full ${theme.activeRing}`}
+              className={`absolute inset-0 rounded-xl ${theme.activeRing}`}
             />
           )}
         </motion.div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="font-semibold text-[var(--text-primary)] truncate">
-              {label}
-            </span>
-            <span
-              className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${theme.badge} ${theme.badgeText}`}
-            >
-              {percentage}%
-            </span>
+          <div className="flex items-center justify-between gap-1.5 mb-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-semibold text-xs sm:text-sm text-[var(--text-primary)] truncate">
+                {label}
+              </span>
+              {onOpenOptions && (
+                <button
+                  type="button"
+                  onClick={onOpenOptions}
+                  aria-label="Lo-Fi options"
+                  title="Configure Lo-Fi audio sources"
+                  className="p-1 rounded-md text-[var(--text-secondary)] hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-500/10 transition-colors shrink-0"
+                >
+                  <SlidersHorizontal size={13} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {sublabel && (
+                <span className="text-[11px] text-[var(--text-secondary)] hidden md:inline truncate max-w-[120px]">
+                  {sublabel}
+                </span>
+              )}
+              <span
+                className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${theme.badge} ${theme.badgeText}`}
+              >
+                {percentage}%
+              </span>
+            </div>
           </div>
 
           <ReactSlider
-            className="h-2 w-full bg-[var(--border-primary)] rounded-full"
-            thumbClassName={`h-5 w-5 rounded-full ${theme.thumb} border-2 border-[var(--bg-primary)] shadow-md cursor-pointer -translate-y-1.5 transition-transform hover:scale-110 focus:outline-none focus:ring-2`}
+            className="h-2 w-full bg-[var(--border-primary)] rounded-full cursor-pointer"
+            thumbClassName={`h-4.5 w-4.5 rounded-full ${theme.thumb} border-2 border-[var(--bg-primary)] shadow-sm cursor-pointer -translate-y-1.25 transition-transform hover:scale-115 focus:outline-none focus:ring-2`}
             trackClassName="h-2 rounded-full"
             renderTrack={(
               props: { key?: React.Key } & React.HTMLProps<HTMLDivElement>
@@ -180,16 +220,16 @@ function SoundControl({
           type="button"
           onClick={isPlaying ? stop : start}
           aria-label={isPlaying ? `Stop ${label}` : `Play ${label}`}
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 ${
+          className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-200 hover:scale-105 ${
             isPlaying
               ? `${theme.iconBg} ${theme.iconText}`
               : `bg-[var(--bg-secondary)] text-[var(--text-secondary)] ${theme.buttonHover}`
           }`}
         >
           {isPlaying ? (
-            <Pause size={20} />
+            <Pause size={18} />
           ) : (
-            <Play size={20} className="ml-0.5" />
+            <Play size={18} className="ml-0.5" />
           )}
         </button>
       </div>
@@ -205,13 +245,17 @@ function NoiseSettingsModal({
   onClose,
   sounds,
   setMaxVolume,
+  onOpenLofiModal,
+  lofiState,
 }: {
   isOpen: boolean;
   onClose: () => void;
   sounds: ReturnType<typeof useNoise>["sounds"];
   setMaxVolume: (index: number, maxVolume: number) => void;
+  onOpenLofiModal: () => void;
+  lofiState: LofiSourceState;
 }) {
-  const [selectedPresets, setSelectedPresets] = useState<[number, number, number]>([0, 0, 0]);
+  const [selectedPresets, setSelectedPresets] = useState<number[]>([0, 0, 0, 0]);
 
   // Tipos para los presets
   type BrownPreset = {
@@ -341,7 +385,7 @@ function NoiseSettingsModal({
       title="Noise Settings"
       maxWidth="max-w-lg"
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         {sounds.map((sound, idx) => {
           const theme = getSoundTheme(sound.key);
           const Icon =
@@ -349,77 +393,112 @@ function NoiseSettingsModal({
               ? Cloud
               : sound.icon === "CloudRain"
               ? CloudRain
-              : Waves;
+              : sound.icon === "Waves"
+              ? Waves
+              : Music;
 
           return (
             <div
               key={sound.key}
-              className={`rounded-xl border-2 border-[var(--border-primary)] bg-[var(--bg-primary)] p-4 transition-all ${
+              className={`rounded-xl border border-[var(--border-primary)] bg-[var(--bg-primary)] p-3.5 transition-all ${
                 sound.isPlaying ? `ring-1 ${theme.activeRing}` : ""
               }`}
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${theme.iconBg}`}
-                >
-                  <Icon size={18} className={theme.iconText} />
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${theme.iconBg}`}
+                  >
+                    <Icon size={16} className={theme.iconText} />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                      {sound.label}
+                    </h4>
+                    <p className="text-[11px] text-[var(--text-secondary)] truncate">
+                      {sound.key === "lofi"
+                        ? "Streaming & local audio channels"
+                        : "Max volume and acoustics presets"}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-[var(--text-primary)]">
-                    {sound.label}
-                  </h4>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Max volume and presets
-                  </p>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="text-xs text-[var(--text-secondary)]">
+                    Max:
+                  </label>
+                  <input
+                    type="number"
+                    min={0.1}
+                    max={5}
+                    step={0.1}
+                    value={sound.max}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value)) setMaxVolume(idx, value);
+                    }}
+                    className="w-16 px-2 py-1 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
-                <label className="text-sm text-[var(--text-secondary)]">
-                  Max volume
-                </label>
-                <input
-                  type="number"
-                  min={0.1}
-                  max={5}
-                  step={0.1}
-                  value={sound.max}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value)) setMaxVolume(idx, value);
-                  }}
-                  className="w-20 px-3 py-1.5 rounded-lg border-2 border-[var(--border-primary)] bg-[var(--bg-secondary)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/30"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {presetsMap[sound.key as keyof PresetsMap].map(
-                  (preset: Preset, pIdx: number) => (
-                    <button
-                      key={preset.label}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-                        selectedPresets[idx] === pIdx
-                          ? `${theme.iconBg} ${theme.iconText} ring-1 ${theme.activeRing}`
-                          : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border-primary)]"
-                      }`}
-                      onClick={() => {
-                        applyPreset(
-                          sound.key as keyof PresetsMap,
-                          sound.soundRef,
-                          preset
-                        );
-                        setSelectedPresets((sel) =>
-                          sel.map((v, i) =>
-                            i === idx ? pIdx : v
-                          ) as [number, number, number]
-                        );
-                      }}
-                    >
-                      {preset.label}
-                    </button>
-                  )
-                )}
-              </div>
+              {sound.key === "lofi" ? (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] text-xs">
+                  <div className="min-w-0">
+                    <span className="font-medium text-[var(--text-primary)]">
+                      {lofiState.type === "curated" && "Curated Lo-Fi Beats"}
+                      {lofiState.type === "local" &&
+                        (lofiState.localFileName
+                          ? `Local: ${lofiState.localFileName}`
+                          : "Local Audio File")}
+                      {lofiState.type === "radio" && `Radio: ${lofiState.radioName}`}
+                      {lofiState.type === "youtube" &&
+                        `YouTube: ${lofiState.youtubeTitle}`}
+                    </span>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">
+                      Offline beats, local files, web radio, or YouTube
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenLofiModal();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 transition shrink-0 ml-2 shadow-sm text-xs"
+                  >
+                    Lo-Fi Sources
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {presetsMap[sound.key as keyof PresetsMap]?.map(
+                    (preset: Preset, pIdx: number) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                          selectedPresets[idx] === pIdx
+                            ? `${theme.iconBg} ${theme.iconText} ring-1 ${theme.activeRing}`
+                            : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border-primary)]"
+                        }`}
+                        onClick={() => {
+                          applyPreset(
+                            sound.key as keyof PresetsMap,
+                            sound.soundRef,
+                            preset
+                          );
+                          setSelectedPresets((sel) =>
+                            sel.map((v, i) => (i === idx ? pIdx : v))
+                          );
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -433,6 +512,8 @@ function NoiseSettingsModal({
 // -------------------------
 export default function NoiseGenerator() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLofiModalOpen, setIsLofiModalOpen] = useState(false);
+
   const {
     sounds,
     startSound,
@@ -443,8 +524,26 @@ export default function NoiseGenerator() {
     initializeAudio,
   } = useNoise();
 
+  const [lofiState, setLofiState] = useState<LofiSourceState>(() =>
+    LofiEngine.getInstance().getState()
+  );
+
+  const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Sync state with LofiEngine
+  useEffect(() => {
+    const engine = LofiEngine.getInstance();
+    return engine.subscribe(setLofiState);
+  }, []);
+
+  // Register YouTube IFrame when source is youtube
+  useEffect(() => {
+    const engine = LofiEngine.getInstance();
+    engine.registerYouTubeIframe(ytIframeRef.current);
+  }, [lofiState.youtubeVideoId, lofiState.type]);
+
   // Check if any sound is playing
-  const anySoundPlaying = sounds.some(sound => sound.isPlaying);
+  const anySoundPlaying = sounds.some((sound) => sound.isPlaying);
 
   // Play/Pause all sounds
   const handlePlayPauseAll = useCallback(async () => {
@@ -458,10 +557,10 @@ export default function NoiseGenerator() {
         }
       });
     } else {
-      // Stagger starts so the audio graphs aren't all built on the same frame
+      // Stagger starts so audio graphs aren't all built on the same frame
       sounds.forEach((_sound, idx) => {
         if (!_sound.isPlaying) {
-          setTimeout(() => void startSound(idx).catch(console.error), idx * 150);
+          setTimeout(() => void startSound(idx).catch(console.error), idx * 120);
         }
       });
     }
@@ -478,93 +577,158 @@ export default function NoiseGenerator() {
   // Animation variants
   const container = {
     hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+    show: { opacity: 1, transition: { staggerChildren: 0.06 } },
   };
   const item = {
-    hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
   };
 
+  const lofiSound = sounds.find((s) => s.key === "lofi");
+  const lofiIndex = sounds.findIndex((s) => s.key === "lofi");
+
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col justify-between">
+      {/* Hidden YouTube IFrame controller when YouTube source is selected */}
+      {lofiState.type === "youtube" && lofiState.youtubeVideoId && (
+        <div className="sr-only pointer-events-none" aria-hidden="true">
+          <iframe
+            ref={ytIframeRef}
+            id="lofi-yt-background-player"
+            title="YouTube Lo-Fi Background Audio"
+            src={`https://www.youtube.com/embed/${lofiState.youtubeVideoId}?enablejsapi=1&origin=${typeof window !== "undefined" ? window.location.origin : ""}&autoplay=0`}
+            allow="autoplay"
+            tabIndex={-1}
+            width="1"
+            height="1"
+          />
+        </div>
+      )}
+
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between pb-3"
+        className="flex items-center justify-between pb-2"
       >
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-[var(--accent-primary)]/10">
-              <Headphones size={18} className="text-[var(--accent-primary)]" />
-            </div>
-            <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] leading-tight">
-              Noise Generator
-            </h3>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-[var(--accent-primary)]/10">
+            <Headphones size={17} className="text-[var(--accent-primary)]" />
           </div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)] leading-tight">
+            Noise Generator
+          </h3>
+        </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={handlePlayPauseAll}
-            className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               anySoundPlaying
-                ? "border-2 border-[var(--accent-primary)] text-[var(--accent-primary)] bg-transparent hover:bg-[var(--accent-primary)]/10 shadow-md"
+                ? "border-2 border-[var(--accent-primary)] text-[var(--accent-primary)] bg-transparent hover:bg-[var(--accent-primary)]/10 shadow-sm"
                 : "bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)]/50"
             }`}
             aria-label={anySoundPlaying ? "Pause all sounds" : "Play all sounds"}
           >
-            {anySoundPlaying ? <Pause size={18} /> : <Play size={18} />}
+            {anySoundPlaying ? <Pause size={15} /> : <Play size={15} />}
             <span className="hidden sm:inline">
               {anySoundPlaying ? "Pause all" : "Play all"}
             </span>
           </button>
 
           <button
-            className="p-2 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
+            className="p-1.5 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Noise generator settings"
           >
-            <SlidersHorizontal size={20} />
+            <SlidersHorizontal size={18} />
           </button>
         </div>
       </motion.div>
 
-      {/* Sound controls */}
+      {/* Sound controls (compact 4-row layout without stretching) */}
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="flex-1 flex flex-col gap-3 py-2"
+        className="flex-1 flex flex-col gap-2 sm:gap-2.5 py-1"
       >
-        {sounds.map((sound, idx) => (
-          <motion.div key={sound.key} variants={item}>
-            <SoundControl
-              index={idx}
-              soundKey={sound.key}
-              label={sound.label}
-              icon={
-                sound.icon === "Cloud"
-                  ? Cloud
-                  : sound.icon === "CloudRain"
-                  ? CloudRain
-                  : Waves
-              }
-              volume={sound.volume}
-              setVolume={(vol) => setVolume(idx, vol)}
-              isPlaying={sound.isPlaying}
-              start={() => handleStart(idx)}
-              stop={() => stopSound(idx)}
-              max={sound.max}
-            />
-          </motion.div>
-        ))}
+        {sounds.map((sound, idx) => {
+          const isLofi = sound.key === "lofi";
+          const lofiSublabel = isLofi
+            ? lofiState.type === "local"
+              ? lofiState.localFileName
+                ? `Local · ${lofiState.localFileName}`
+                : "Local File"
+              : lofiState.type === "radio"
+              ? `Radio · ${lofiState.radioName}`
+              : lofiState.type === "youtube"
+              ? `YouTube · ${lofiState.youtubeTitle}`
+              : "Curated Beats"
+            : undefined;
+
+          const Icon =
+            sound.icon === "Cloud"
+              ? Cloud
+              : sound.icon === "CloudRain"
+              ? CloudRain
+              : sound.icon === "Waves"
+              ? Waves
+              : Music;
+
+          return (
+            <motion.div key={sound.key} variants={item}>
+              <SoundControl
+                index={idx}
+                soundKey={sound.key}
+                label={sound.label}
+                icon={Icon}
+                volume={sound.volume}
+                setVolume={(vol) => setVolume(idx, vol)}
+                isPlaying={sound.isPlaying}
+                start={() => handleStart(idx)}
+                stop={() => stopSound(idx)}
+                max={sound.max}
+                sublabel={lofiSublabel}
+                onOpenOptions={
+                  isLofi ? () => setIsLofiModalOpen(true) : undefined
+                }
+              />
+            </motion.div>
+          );
+        })}
       </motion.div>
 
-      {/* Settings modal */}
+      {/* Noise Settings Modal */}
       <NoiseSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         sounds={sounds}
         setMaxVolume={setMaxVolume}
+        onOpenLofiModal={() => setIsLofiModalOpen(true)}
+        lofiState={lofiState}
+      />
+
+      {/* Dedicated Lo-Fi Options Popup Modal */}
+      <LofiOptionsModal
+        isOpen={isLofiModalOpen}
+        onClose={() => setIsLofiModalOpen(false)}
+        isPlaying={Boolean(lofiSound?.isPlaying)}
+        onTogglePlay={() => {
+          if (lofiIndex !== -1) {
+            if (lofiSound?.isPlaying) {
+              stopSound(lofiIndex);
+            } else {
+              handleStart(lofiIndex);
+            }
+          }
+        }}
+        volume={lofiSound?.volume ?? 0.7}
+        onVolumeChange={(vol) => {
+          if (lofiIndex !== -1) {
+            setVolume(lofiIndex, vol);
+          }
+        }}
       />
     </div>
   );

@@ -293,10 +293,37 @@ export const createLocalSupabase = () => ({
     signOut: async () => ({ error: null }),
   },
   storage: {
-    from: () => ({
-      upload: async () => ({ data: null, error: { message: "Avatar upload is not available in local mode" } }),
-      getPublicUrl: () => ({ data: { publicUrl: "" } }),
-      remove: async () => ({ data: [], error: null }),
+    from: (bucket: string = "avatars") => ({
+      upload: async (path: string, file: Blob | File) => {
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          try {
+            localStorage.setItem(`unitracker_storage_${bucket}_${path}`, dataUrl);
+          } catch {
+            // Storage quota warning fallback
+          }
+          return { data: { path }, error: null };
+        } catch (e: any) {
+          return { data: null, error: { message: e.message || "Failed to process image" } };
+        }
+      },
+      getPublicUrl: (path: string) => {
+        const publicUrl = localStorage.getItem(`unitracker_storage_${bucket}_${path}`) || "";
+        return { data: { publicUrl } };
+      },
+      remove: async (paths: string[]) => {
+        paths.forEach((p) => {
+          try {
+            localStorage.removeItem(`unitracker_storage_${bucket}_${p}`);
+          } catch {}
+        });
+        return { data: [], error: null };
+      },
     }),
   },
   functions: { invoke: async () => ({ data: null, error: { message: "Not available in local mode" } }) },
